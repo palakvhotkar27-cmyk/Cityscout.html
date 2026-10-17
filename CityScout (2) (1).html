@@ -1,0 +1,1303 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>CityScout</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Mono:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: a transit-board look for a student city guide. Sticky header,
+   filter and card panel on the left, a schematic suburban rail map on the right.
+   Station names use yellow-and-black signage chips like Mumbai platform boards. */
+:root{
+  --bg:#F1F5F4; --surface:#FFFFFF; --surface2:#E6EDEB; --ink:#10252A; --muted:#506569; --line:#CBD8D5;
+  --accent:#0A6F63; --accent-ink:#FFFFFF; --accent-soft:#D3EDE8;
+  --sign:#F7C600; --sign-ink:#14130A; --warn:#B42318;
+  --sea:#CBE1EA; --land:#EDF2EE; --green:#CFE6D2; --rail:#6A7E82;
+  --c-food:#C2410C; --c-study:#3B4FD4; --c-view:#0E7490; --c-thrift:#A21CAF; --c-nature:#2F7D32; --c-culture:#BE185D;
+  --shadow:0 1px 2px rgba(16,37,42,.08),0 8px 22px rgba(16,37,42,.07);
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1719; --surface:#142225; --surface2:#1C3033; --ink:#E6F0EE; --muted:#9FB4B2; --line:#26403F;
+    --accent:#3FD0BC; --accent-ink:#06201C; --accent-soft:#123A36; --warn:#FF8A7A;
+    --sea:#0F2A38; --land:#12201F; --green:#17331F; --rail:#7C9598;
+    --c-food:#FB8F5A; --c-study:#8FA2FF; --c-view:#4FD1E8; --c-thrift:#E58CF0; --c-nature:#72D27A; --c-culture:#FF8FBF;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.3);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1719; --surface:#142225; --surface2:#1C3033; --ink:#E6F0EE; --muted:#9FB4B2; --line:#26403F;
+  --accent:#3FD0BC; --accent-ink:#06201C; --accent-soft:#123A36; --warn:#FF8A7A;
+  --sea:#0F2A38; --land:#12201F; --green:#17331F; --rail:#7C9598;
+  --c-food:#FB8F5A; --c-study:#8FA2FF; --c-view:#4FD1E8; --c-thrift:#E58CF0; --c-nature:#72D27A; --c-culture:#FF8FBF;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{font-family:var(--f-display);font-weight:800;letter-spacing:-.01em;line-height:1.1;margin:0;text-wrap:balance}
+p{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:20px;padding-block:10px;max-width:1500px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:8px;font:800 22px var(--f-display);letter-spacing:-.02em;flex:none}
+.brand svg{width:28px;height:28px;flex:none}
+.tabs{display:flex;gap:4px;overflow-x:auto;min-width:0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:0;background:transparent;padding:8px 12px;border-radius:8px;font:600 14px var(--f-body);color:var(--muted);white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tabs button:hover{color:var(--ink);background:var(--surface2)}
+.tabs button[aria-selected="true"]{color:var(--accent-ink);background:var(--accent)}
+.count{font:600 11px var(--f-mono);background:var(--sign);color:var(--sign-ink);border-radius:3px;padding:0 5px;min-width:18px;text-align:center}
+
+/* intro */
+.page{max-width:1500px;margin:0 auto;padding-block:20px 48px}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 32px;align-items:end;margin-bottom:18px}
+.intro h1{font-size:clamp(24px,3.4vw,38px);max-width:22em}
+.intro .sub{color:var(--muted);max-width:60ch;margin-top:8px}
+.note{display:inline-block;margin-top:10px;font:500 12px var(--f-mono);color:var(--muted);border:1px dashed var(--line);border-radius:6px;padding:3px 8px}
+.stats{display:flex;gap:22px;margin:0}
+.stats div{display:flex;flex-direction:column-reverse}
+.stats dt{font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:0;font:800 28px var(--f-display);font-variant-numeric:tabular-nums}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,480px) minmax(0,1fr);gap:20px;align-items:start}
+.panel{min-width:0}
+.mapcol{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px);height:min(80vh,780px);min-height:420px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--sea);box-shadow:var(--shadow)}
+#map{display:block;width:100%;height:100%;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+#map.drag{cursor:grabbing}
+#map.addmode{cursor:crosshair}
+
+/* filters */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.lbl,.field>label,.lblrow label{font:600 12px var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.lblrow{display:flex;justify-content:space-between;align-items:baseline}
+.lblrow output{font:600 14px var(--f-mono);color:var(--ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input[type="search"],input[type="text"],input[type="number"],select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;min-height:40px}
+textarea{resize:vertical;min-height:72px}
+input[type="range"]{width:100%;accent-color:var(--accent)}
+.search{margin-bottom:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:5px 11px;border-radius:999px;font:600 13px var(--f-body);color:var(--ink)}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .n{font:500 11px var(--f-mono);opacity:.7}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--cc,var(--accent));flex:none}
+.chips.small .chip{padding:3px 9px;font-size:12px}
+.switch{display:flex;gap:8px;align-items:center;margin-bottom:14px;font-weight:500}
+.switch input{width:18px;height:18px;accent-color:var(--accent)}
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.lab summary{cursor:pointer;font-weight:600}
+.lab .body{display:grid;gap:10px;margin-top:10px}
+.lab .formula{font:500 12px var(--f-mono);background:var(--surface2);border-radius:6px;padding:8px 10px;overflow-x:auto;white-space:nowrap}
+.lab .out{display:flex;align-items:center;gap:12px}
+.lab .out b{font:800 32px var(--f-display);font-variant-numeric:tabular-nums}
+.resbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0 10px;color:var(--muted);font-weight:500}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:8px 14px;border-radius:8px;font:600 14px var(--f-body);display:inline-flex;gap:6px;align-items:center;justify-content:center;min-height:38px}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--ink)}
+.btn.sm{padding:5px 10px;min-height:32px;font-size:13px}
+
+/* cards */
+.list{display:grid;gap:10px}
+.card{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;position:relative;cursor:pointer;scroll-margin-top:90px}
+.card:hover{border-color:var(--muted)}
+.card[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.thumb{width:84px;height:84px;border-radius:9px;overflow:hidden;position:relative;display:grid;place-items:center;
+  background:linear-gradient(140deg,color-mix(in srgb,var(--cc) 82%,#000),color-mix(in srgb,var(--cc) 55%,#fff))}
+.thumb::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 13px,rgba(255,255,255,.12) 13px 14px),repeating-linear-gradient(0deg,transparent 0 13px,rgba(255,255,255,.12) 13px 14px)}
+.thumb b{position:relative;font:800 38px var(--f-display);color:rgba(255,255,255,.92);text-shadow:0 2px 0 rgba(0,0,0,.18)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cbody{min-width:0;display:flex;flex-direction:column;gap:6px}
+.chead{display:flex;gap:8px;justify-content:space-between;align-items:flex-start}
+.chead h3{font-size:17px;overflow-wrap:anywhere}
+.area{color:var(--muted);font-size:13px}
+.ttl{all:unset;cursor:pointer;display:inline;font:inherit;color:inherit;border-radius:3px}
+.ttl:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mapcol{scroll-margin-top:70px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px}
+.cat{display:inline-flex;gap:6px;align-items:center;font-weight:600}
+.cost{font:600 13px var(--f-mono);font-variant-numeric:tabular-nums}
+.stn{font:600 11px var(--f-mono);background:var(--sign);color:var(--sign-ink);padding:2px 6px;border-radius:3px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:12px;font-weight:500;color:var(--muted);background:var(--surface2);border-radius:4px;padding:1px 7px}
+.tag.pending{background:transparent;border:1px dashed var(--muted)}
+.ring{--p:60;width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--p)*1%),var(--surface2) 0)}
+.ring b{width:36px;height:36px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font:700 13px var(--f-mono);font-variant-numeric:tabular-nums}
+.more{display:grid;gap:10px;margin-top:4px;padding-top:10px;border-top:1px solid var(--line)}
+.tip-text{font-size:14px}
+.bk{display:grid;gap:6px;font-size:13px}
+.bk div{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:8px;align-items:center}
+.bar-t{height:6px;border-radius:3px;background:var(--surface2);overflow:hidden}
+.bar-t i{display:block;height:100%;background:var(--accent)}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.actions a.btn{text-decoration:none}
+.heart[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font:800 18px var(--f-display);margin-bottom:4px}
+
+/* trails, saved, scouts, form */
+.tp h2{font-size:24px;margin-bottom:6px}
+.tp>.lead{color:var(--muted);margin-bottom:14px;max-width:56ch}
+.trail{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;display:grid;gap:10px}
+.trail[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.trail h3{font-size:19px}
+.trail ol{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.trail li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:14px}
+.trail li i{font:600 12px var(--f-mono);font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.copybox{width:100%;font:500 12px var(--f-mono);min-height:110px}
+.sum{display:flex;flex-wrap:wrap;gap:6px 16px;font-weight:600;margin-bottom:12px}
+.sum span b{font-family:var(--f-mono)}
+.lb{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:8px}
+.lb li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.lb li.me{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.lb .rk{font:800 20px var(--f-display);color:var(--muted)}
+.lb li:first-child .rk{color:var(--ink)}
+.lb .pts{font:700 16px var(--f-mono);font-variant-numeric:tabular-nums}
+.lb small{display:block;color:var(--muted)}
+.rules{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:14px}
+.rules li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.rules b{font-family:var(--f-mono)}
+form .field{margin-bottom:12px}
+.err{color:var(--warn);font-size:13px;min-height:0}
+.hint{color:var(--muted);font-size:13px}
+.pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.loc{font:500 13px var(--f-mono);background:var(--surface2);border-radius:6px;padding:4px 8px}
+.prev{width:84px;height:84px;border-radius:9px;object-fit:cover;border:1px solid var(--line)}
+
+/* map overlays */
+.mc{position:absolute;top:10px;right:10px;display:grid;gap:6px;z-index:2}
+.mc button{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font:700 18px var(--f-body);display:grid;place-items:center;box-shadow:var(--shadow)}
+.mc button:hover{border-color:var(--ink)}
+.legend{position:absolute;top:10px;left:10px;z-index:2;background:color-mix(in srgb,var(--surface) 92%,transparent);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:grid;gap:3px;font-size:12px;max-width:170px}
+.legend div{display:flex;align-items:center;gap:6px;font-weight:500}
+.legend small{color:var(--muted);margin-top:2px}
+.maphint{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;background:var(--ink);color:var(--bg);border-radius:999px;padding:6px 14px;font-weight:600;font-size:13px;white-space:nowrap;max-width:calc(100% - 120px);overflow:hidden;text-overflow:ellipsis}
+.peek{position:absolute;left:10px;right:10px;bottom:10px;z-index:3;max-width:440px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;box-shadow:var(--shadow)}
+.peek h3{font-size:16px;overflow-wrap:anywhere}
+.peek .x{border:0;background:transparent;font-size:20px;line-height:1;width:32px;height:32px;border-radius:6px}
+.peek .x:hover{background:var(--surface2)}
+.credit{position:absolute;right:10px;bottom:10px;z-index:1;font:500 10px var(--f-mono);color:var(--muted);background:color-mix(in srgb,var(--surface) 80%,transparent);padding:2px 6px;border-radius:4px}
+.peek:not([hidden])~.credit{display:none}
+
+/* svg map */
+.m-sea{fill:var(--sea)} .m-land{fill:var(--land)} .m-green{fill:var(--green)} .m-bay{fill:var(--sea)}
+.m-coast{fill:none;stroke:color-mix(in srgb,var(--rail) 40%,transparent);stroke-width:1}
+.m-rail{fill:none;stroke:var(--rail);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.m-rail.w{stroke-dasharray:9 5}
+.m-rail.h{stroke-dasharray:2 7}
+.fpin{cursor:pointer}.fpin .fb{fill:var(--ink);stroke:var(--surface);stroke-width:2.5}.fpin.ev .fb{fill:var(--sign)}
+.fpin .pump{fill:none;stroke:var(--bg);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.fpin .bolt{fill:var(--sign-ink)}
+.fpin .badge{fill:var(--sign);stroke:var(--surface);stroke-width:1.5}.fpin .halo{fill:none;stroke:var(--accent);stroke-width:3}.fpin:focus{outline:none}
+.m-sealbl{font:italic 700 24px var(--f-display);letter-spacing:.35em;fill:color-mix(in srgb,var(--rail) 55%,transparent)}
+.m-parklbl{font:700 12px var(--f-body);letter-spacing:.18em;fill:color-mix(in srgb,var(--c-nature) 75%,var(--ink))}
+.m-route{fill:none;stroke:var(--ink);stroke-width:3;stroke-dasharray:2 7;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.pin{cursor:pointer}
+.pin circle.b{fill:var(--cc);stroke:var(--surface);stroke-width:2.5}
+.pin text.n{font:700 12px var(--f-mono);fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.pin .halo{fill:none;stroke:var(--ink);stroke-width:2.5}
+.pin:focus{outline:none}
+.pin:focus-visible .halo{stroke:var(--accent);stroke-width:3.5}
+.ctx{fill:var(--cc);opacity:.35;stroke:var(--surface);stroke-width:1}
+.plabel{font:700 12px var(--f-body);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round;fill:var(--ink);pointer-events:none}
+.st circle{fill:var(--surface);stroke:var(--rail);stroke-width:2}
+.st text{font:600 10px var(--f-mono);fill:var(--muted);paint-order:stroke;stroke:var(--land);stroke-width:3px;letter-spacing:.04em;text-transform:uppercase;pointer-events:none}
+.st.me circle{fill:var(--sign);stroke:var(--sign-ink);stroke-width:2.5}
+.st.me text{fill:var(--ink);font-weight:600}
+.draft circle{fill:var(--sign);stroke:var(--sign-ink);stroke-width:2.5}
+.draft path{stroke:var(--sign-ink);stroke-width:2.5;stroke-linecap:round}
+.rl{font:600 10px var(--f-mono);letter-spacing:.14em;fill:var(--rail);paint-order:stroke;stroke:var(--land);stroke-width:3px;text-transform:uppercase}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;max-width:min(92vw,460px);box-shadow:var(--shadow)}
+
+@media (max-width:980px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .mapcol{position:relative;top:0;height:min(62vh,430px);min-height:320px;order:-1}
+  .intro{grid-template-columns:minmax(0,1fr)}
+  .bar{gap:10px}
+  #map{touch-action:pan-y}
+  .legend{display:none}
+}
+@media (max-width:520px){
+  .brand span{display:none}
+  .row2{grid-template-columns:1fr}
+  .card{grid-template-columns:68px minmax(0,1fr)}
+  .thumb{width:68px;height:68px}.thumb b{font-size:30px}
+  .stats{gap:16px}
+}
+
+/* ---- v2 additions ---- */
+.themebtn{margin-left:auto;flex:none;display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font:600 13px var(--f-body)}
+.themebtn:hover{border-color:var(--ink)}
+.themebtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:720px){.themebtn span{display:none}.themebtn{padding:7px 9px}}
+.switch+.switch{margin-top:8px}
+.stk{flex:none;display:inline-block;vertical-align:middle}
+.stkl{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.stkpick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.stkpick button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:1px solid var(--line);background:var(--surface);border-radius:10px;font:600 11px/1.15 var(--f-body);text-align:center}
+.stkpick button:hover{border-color:var(--ink)}
+.stkpick button[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent)}
+.tag.offer{background:var(--sign);color:var(--sign-ink);font-weight:600}
+.tag.safe{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.offerbox{margin:0;padding:8px 10px;border-radius:8px;background:var(--sign);color:var(--sign-ink);font-size:13px}
+.rx{display:grid;gap:6px}
+.revs h4{margin:0 0 8px;font:800 15px var(--f-display)}.revs h4 small{font:500 12px var(--f-mono);color:var(--muted);margin-left:6px}
+.revlist{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.rev{display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:13px}
+.rev p{margin:2px 0 6px}.rev small{color:var(--muted)}
+.revact{display:flex;gap:6px;flex-wrap:wrap}
+.revform{display:grid;gap:8px;padding:10px;border:1px dashed var(--line);border-radius:10px}
+.revform textarea{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface)}
+.revrow{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px}
+.revrow input[type=number]{width:84px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--surface)}
+.cnt{font:500 11px var(--f-mono);color:var(--muted);text-align:right}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.bdg{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:12px 8px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.bdg small{color:var(--muted);font-size:11px;line-height:1.3}
+.bdg.lock svg{opacity:.45}.bdg.lock b{color:var(--muted)}
+.sharedlg{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:14px;max-width:min(92vw,420px)}
+.sharedlg::backdrop{background:rgba(0,0,0,.55)}
+.sharedlg img{width:100%;max-height:60vh;object-fit:contain;border-radius:8px;margin-bottom:10px;background:var(--bg)}
+.sharedlg p{font-size:12px;color:var(--muted);margin-bottom:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<script>try{var t=localStorage.getItem("cityscout.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<header class="top">
+  <div class="bar gut">
+    <div class="brand" aria-label="CityScout">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="7" fill="var(--accent)"/><path d="M16 6l7 8-7 12-7-12z" fill="var(--sign)" stroke="var(--sign-ink)" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 14h14M13 14l3-8 3 8" fill="none" stroke="var(--sign-ink)" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      <span>CityScout</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="explore" aria-selected="true">Explore</button>
+      <button role="tab" data-tab="trails" aria-selected="false">Trails</button>
+      <button role="tab" data-tab="saved" aria-selected="false">Saved <span class="count" id="savedCount">0</span></button>
+      <button role="tab" data-tab="add" aria-selected="false">Add a gem</button>
+      <button role="tab" data-tab="scouts" aria-selected="false">Top scouts</button>
+    </nav>
+    <button class="themebtn" id="themeBtn" type="button"><svg id="themeIcon" viewBox="0 0 24 24" aria-hidden="true"></svg><span id="themeLbl">Auto</span></button>
+  </div>
+</header>
+
+<main class="page gut">
+  <section class="intro">
+    <div>
+      <h1>Google Maps shows where everyone goes. CityScout shows where locals go.</h1>
+      <p class="sub">Cheap eats, quiet reading rooms and sunset spots from Mumbai to Navi Mumbai, Panvel, Thane and Kalyan, ranked by a Gem Score instead of crowd size.</p>
+      <span class="note">Prototype with sample data. Ratings, prices and review counts are illustrative, pin positions are approximate. Petrol pump and EV charger details are sample data too.</span>
+    </div>
+    <dl class="stats" aria-label="Summary">
+      <div><dt>Places</dt><dd id="stPlaces">0</dd></div>
+      <div><dt>Under ₹100</dt><dd id="stCheap">0</dd></div>
+      <div><dt>Hidden gems</dt><dd id="stGems">0</dd></div>
+    </dl>
+  </section>
+
+  <div class="layout">
+    <section class="panel" id="panel">
+
+      <div class="tp" id="p-explore" role="tabpanel">
+        <div class="search">
+          <label class="sr" for="q">Search places</label>
+          <input id="q" type="search" placeholder="Search vada pav, library, lake, Thane" autocomplete="off">
+        </div>
+        <div class="row2">
+          <div class="field"><label for="stn">I'm at</label><select id="stn"></select></div>
+          <div class="field"><label for="sort">Sort by</label>
+            <select id="sort">
+              <option value="gem">Hidden Gem Score</option>
+              <option value="cheap">Cheapest first</option>
+              <option value="near">Nearest to me</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><span class="lbl">Category</span><div class="chips" id="cats"></div></div>
+        <div class="field">
+          <div class="lblrow"><label for="budget">Max spend per person</label><output id="budgetOut" for="budget">₹500+</output></div>
+          <input id="budget" type="range" min="0" max="500" step="10" value="500">
+          <div class="chips small" id="presets"></div>
+        </div>
+        <div class="field"><span class="lbl">Vibe</span><div class="chips" id="vibes"></div></div>
+        <label class="switch"><input type="checkbox" id="gemsOnly"><span>Hidden gems only (score 55 and above)</span></label>
+        <label class="switch"><input type="checkbox" id="soloOnly"><span>Solo-friendly and well lit</span></label>
+        <label class="switch"><input type="checkbox" id="offerOnly"><span>Student offers only</span></label>
+        <label class="switch"><input type="checkbox" id="lyFuel"><span>Show petrol pumps on the map</span></label>
+        <label class="switch"><input type="checkbox" id="lyEv"><span>Show EV charging points on the map</span></label>
+
+        <details class="lab" id="lab">
+          <summary>How the Gem Score works</summary>
+          <div class="body">
+            <div class="formula">score = rating × (1 − crowd penalty) × verification boost</div>
+            <p class="hint">A high rating from few people beats a high rating from thousands. Verification by locals adds up to 20%.</p>
+            <div class="field" style="margin:0"><div class="lblrow"><label for="labR">Rating</label><output id="labRo">4.6</output></div><input id="labR" type="range" min="3" max="5" step="0.1" value="4.6"></div>
+            <div class="field" style="margin:0"><div class="lblrow"><label for="labN">Reviews</label><output id="labNo">85</output></div><input id="labN" type="range" min="0.3" max="3.9" step="0.05" value="1.93"></div>
+            <div class="field" style="margin:0"><div class="lblrow"><label for="labV">Verified by locals</label><output id="labVo">12</output></div><input id="labV" type="range" min="0" max="50" step="1" value="12"></div>
+            <div class="out"><div class="ring" id="labRing"><b id="labRingN">0</b></div><div><b id="labScore">0</b><div class="hint" id="labTier"></div></div></div>
+          </div>
+        </details>
+
+        <div class="resbar"><span id="resCount" aria-live="polite"></span><button class="btn ghost sm" id="surprise" type="button">Surprise me</button></div>
+        <div class="list" id="list"></div>
+      </div>
+
+      <div class="tp" id="p-trails" role="tabpanel" hidden>
+        <h2>Trails</h2>
+        <p class="lead">Ready-made plans with the spend added up. Pick one to draw the route on the map.</p>
+        <div id="trailList"></div>
+      </div>
+
+      <div class="tp" id="p-saved" role="tabpanel" hidden>
+        <h2>Saved places</h2>
+        <p class="lead">Your shortlist, with the total you would spend if you visited all of it.</p>
+        <div id="savedBox"></div>
+      </div>
+
+      <div class="tp" id="p-add" role="tabpanel" hidden>
+        <h2>Add a gem</h2>
+        <p class="lead">Know a place the apps miss? Drop a pin and share it. Three locals verifying it lifts the pending label.</p>
+        <form id="addForm" novalidate>
+          <div class="field"><label for="fName">Place name</label><input id="fName" type="text" maxlength="60" placeholder="e.g. Corner chai stall near the library"><div class="err" id="eName" aria-live="polite"></div></div>
+          <div class="row2">
+            <div class="field"><label for="fCat">Category</label><select id="fCat"></select></div>
+            <div class="field"><label for="fCost">Avg spend per person (₹)</label><input id="fCost" type="number" min="0" max="2000" step="5" value="50"><div class="err" id="eCost" aria-live="polite"></div></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="fArea">Locality</label><input id="fArea" type="text" maxlength="40" placeholder="e.g. Dombivli East"></div>
+            <div class="field"><span class="lbl" id="lblStk">Your sticker</span><div class="stkpick" id="fStick" role="radiogroup" aria-labelledby="lblStk"></div></div>
+          </div>
+          <div class="field"><span class="lbl">Vibe</span><div class="chips" id="fVibes"></div></div>
+          <div class="field"><label for="fOffer">Student offer (optional)</label><input id="fOffer" type="text" maxlength="60" placeholder="e.g. 10% off with a college ID"></div>
+          <div class="field"><label for="fTip">Your student tip</label><textarea id="fTip" maxlength="160" placeholder="Best time to go, what to order, what to skip"></textarea></div>
+          <div class="field">
+            <span class="lbl">Location</span>
+            <div class="pick">
+              <select id="fStn" aria-label="Start from a station"></select>
+              <span class="loc" id="locOut">No pin yet</span>
+            </div>
+            <p class="hint">Pick the nearest station, then click the map to place the pin exactly.</p>
+            <div class="err" id="eLoc" aria-live="polite"></div>
+          </div>
+          <div class="field">
+            <label for="fPhoto">Photo (optional)</label>
+            <input id="fPhoto" type="file" accept="image/*">
+            <img class="prev" id="prev" alt="Photo preview" hidden>
+          </div>
+          <button class="btn" type="submit">Publish gem</button>
+        </form>
+      </div>
+
+      <div class="tp" id="p-scouts" role="tabpanel" hidden>
+        <h2>Your badge shelf</h2>
+        <p class="lead">Add and verify places to collect badges. Reviews and verifications both count.</p>
+        <div class="shelf" id="shelf"></div>
+        <h3 style="font-size:17px;margin-bottom:8px">Top scouts</h3>
+        <ol class="lb" id="lb"></ol>
+      </div>
+    </section>
+
+    <aside class="mapcol" aria-label="Map of places">
+      <svg id="map" role="img" aria-label="Schematic map of Mumbai, Navi Mumbai, Panvel, Thane and Kalyan with place pins"></svg>
+      <div class="legend" id="legend"></div>
+      <div class="mc">
+        <button type="button" id="zin" aria-label="Zoom in">+</button>
+        <button type="button" id="zout" aria-label="Zoom out">&minus;</button>
+        <button type="button" id="zfit" aria-label="Fit all results" title="Fit results">&#9635;</button>
+      </div>
+      <div class="maphint" id="maphint" hidden>Click the map to drop your pin</div>
+      <div class="peek" id="peek" hidden></div>
+      <div class="credit">Schematic map, not to scale</div>
+    </aside>
+  </div>
+</main>
+<dialog id="shareDlg" class="sharedlg" aria-label="Share card"><img id="shareImg" alt="Preview of your share card"><p>Long-press or right-click the image to save it, then post it to Instagram or WhatsApp.</p><div class="actions"><button class="btn sm" type="button" data-act="shareimg">Share</button><a class="btn ghost sm" id="shareWa" target="_blank" rel="noopener">WhatsApp text</a><button class="btn ghost sm" type="button" data-act="sharedl">Download</button><button class="btn ghost sm" type="button" data-act="shareclose">Close</button></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+(function(){
+'use strict';
+
+/* ---------- Data (sample, illustrative) ---------- */
+const CATS={
+  food:{label:'Food',color:'var(--c-food)'},
+  study:{label:'Study',color:'var(--c-study)'},
+  view:{label:'Viewpoints',color:'var(--c-view)'},
+  thrift:{label:'Thrift',color:'var(--c-thrift)'},
+  nature:{label:'Nature',color:'var(--c-nature)'},
+  culture:{label:'Culture',color:'var(--c-culture)'}
+};
+const VIBES=['Quiet','Social','Aesthetic','Historic','Outdoors'];
+
+const STATIONS=[
+  {id:'csmt',name:'CSMT',lat:18.9400,lng:72.8355,label:1},
+  {id:'churchgate',name:'Churchgate',lat:18.9322,lng:72.8269,label:1},
+  {id:'mumbaicentral',name:'Mumbai Central',lat:18.9693,lng:72.8195},
+  {id:'byculla',name:'Byculla',lat:18.9768,lng:72.8328},
+  {id:'dadar',name:'Dadar',lat:19.0182,lng:72.8438,label:1},
+  {id:'bandra',name:'Bandra',lat:19.0544,lng:72.8402,label:1},
+  {id:'kurla',name:'Kurla',lat:19.0652,lng:72.8790,label:1},
+  {id:'andheri',name:'Andheri',lat:19.1197,lng:72.8464,label:1},
+  {id:'ghatkopar',name:'Ghatkopar',lat:19.0856,lng:72.9081},
+  {id:'vikhroli',name:'Vikhroli',lat:19.1115,lng:72.9277},
+  {id:'goregaon',name:'Goregaon',lat:19.1650,lng:72.8493},
+  {id:'mulund',name:'Mulund',lat:19.1726,lng:72.9570,label:1},
+  {id:'borivali',name:'Borivali',lat:19.2307,lng:72.8567,label:1},
+  {id:'thane',name:'Thane',lat:19.1863,lng:72.9755,label:1},
+  {id:'diva',name:'Diva',lat:19.1880,lng:73.0420},
+  {id:'dombivli',name:'Dombivli',lat:19.2183,lng:73.0867,label:1},
+  {id:'kalyan',name:'Kalyan',lat:19.2350,lng:73.1305,label:1},
+  {id:'ulhasnagar',name:'Ulhasnagar',lat:19.2210,lng:73.1590},
+  {id:'ambernath',name:'Ambernath',lat:19.1860,lng:73.1930,label:1},
+  {id:'titwala',name:'Titwala',lat:19.2975,lng:73.2080,label:1},
+  {id:'wadala',name:'Wadala Road',lat:19.0166,lng:72.8610},
+  {id:'chembur',name:'Chembur',lat:19.0622,lng:72.8998},
+  {id:'vashi',name:'Vashi',lat:19.0745,lng:72.9986,label:1},
+  {id:'nerul',name:'Nerul',lat:19.0338,lng:73.0199},
+  {id:'belapur',name:'Belapur CBD',lat:19.0176,lng:73.0390,label:1},
+  {id:'kharghar',name:'Kharghar',lat:19.0260,lng:73.0690,label:1},
+  {id:'panvel',name:'Panvel',lat:18.9925,lng:73.1160,label:1}
+];
+const LINES=[
+  {name:'Central',cls:'',pts:['csmt','byculla','dadar','kurla','ghatkopar','vikhroli','mulund','thane','diva','dombivli','kalyan','ulhasnagar','ambernath']},
+  {name:'Central',cls:'',pts:['kalyan','titwala']},
+  {name:'Western',cls:'w',pts:['churchgate','mumbaicentral','dadar','bandra','andheri','goregaon','borivali']},
+  {name:'Harbour',cls:'h',pts:['csmt','wadala','kurla','chembur','vashi','nerul','belapur','kharghar','panvel']}
+];
+
+const PLACES=[
+ {id:'kyani',name:'Kyani & Co.',area:'Marine Lines',cat:'food',lat:18.9430,lng:72.8277,cost:150,rating:4.5,reviews:2400,up:38,vibes:['Social','Historic'],tip:'Arrive before the lunch rush and share a plate to stay under budget.',by:'riya_k'},
+ {id:'sassoonlib',name:'David Sassoon Library',area:'Kala Ghoda',cat:'study',lat:18.9285,lng:72.8325,cost:0,rating:4.6,reviews:85,up:14,vibes:['Quiet','Historic'],tip:'A calm reading room in the art district. Check visiting hours and entry rules first.',by:'aditya.t'},
+ {id:'asiatic',name:'Asiatic Society Library',area:'Fort',cat:'study',lat:18.9328,lng:72.8310,cost:0,rating:4.6,reviews:62,up:12,vibes:['Quiet','Historic'],tip:'Grand steps and a quiet hall. Confirm timings and access rules before you go.',by:'meera_j'},
+ {id:'sassoondock',name:'Sassoon Dock',area:'Colaba',cat:'view',lat:18.9145,lng:72.8205,cost:0,rating:4.5,reviews:210,up:17,vibes:['Aesthetic','Outdoors'],tip:'Best in early morning light. Wear shoes you do not mind getting dirty.',by:'sneha_p'},
+ {id:'banganga',name:'Banganga Tank',area:'Walkeshwar',cat:'culture',lat:18.9446,lng:72.7940,cost:0,rating:4.6,reviews:320,up:21,vibes:['Quiet','Historic'],tip:'A still water tank among tall buildings. Go in the morning for calm.',by:'kabir.s'},
+ {id:'fashion',name:'Fashion Street',area:'Churchgate',cat:'thrift',lat:18.9340,lng:72.8300,cost:300,rating:4.0,reviews:5200,up:12,vibes:['Social'],tip:'Bargain hard and compare three stalls before you buy.',by:'riya_k'},
+ {id:'chor',name:'Chor Bazaar',area:'Mutton Street',cat:'thrift',lat:18.9585,lng:72.8280,cost:200,rating:4.1,reviews:1500,up:15,vibes:['Historic','Social'],tip:'Good for vintage finds. Keep your phone in a front pocket.',by:'zoya.a'},
+ {id:'ashok',name:'Ashok Vada Pav',area:'Dadar West',cat:'food',lat:19.0165,lng:72.8398,cost:40,rating:4.5,reviews:120,up:26,vibes:['Social'],tip:'A quick cheap stop between lectures. Go off-peak to skip the queue.',by:'aditya.t'},
+ {id:'aaswad',name:'Aaswad',area:'Dadar West',cat:'food',lat:19.0189,lng:72.8402,cost:200,rating:4.4,reviews:900,up:19,vibes:['Social'],tip:'A sit-down Maharashtrian meal. Go with a friend and split the order.',by:'sneha_p'},
+ {id:'phool',name:'Dadar Phool Market',area:'Dadar West',cat:'culture',lat:19.0185,lng:72.8425,cost:0,rating:4.5,reviews:400,up:18,vibes:['Aesthetic','Outdoors'],tip:'Colourful at dawn, quieter by noon. Good for photography.',by:'meera_j'},
+ {id:'bandrafort',name:'Bandra Fort',area:'Bandstand',cat:'view',lat:19.0420,lng:72.8190,cost:0,rating:4.4,reviews:1800,up:22,vibes:['Outdoors','Aesthetic'],tip:'Sea view at sunset. Come on a weekday for fewer people.',by:'kabir.s'},
+ {id:'elco',name:'Elco Pani Puri Centre',area:'Hill Road, Bandra',cat:'food',lat:19.0590,lng:72.8338,cost:80,rating:4.3,reviews:2600,up:20,vibes:['Social'],tip:'Cheap and filling. Try the standard plate first.',by:'zoya.a'},
+ {id:'versova',name:'Versova Koliwada',area:'Versova',cat:'view',lat:19.1316,lng:72.8128,cost:0,rating:4.2,reviews:1200,up:11,vibes:['Outdoors','Aesthetic'],tip:'A fishing village waterfront. Sunset is the best time.',by:'neel_r'},
+ {id:'powai',name:'Powai Lake',area:'Powai',cat:'nature',lat:19.1258,lng:72.9040,cost:0,rating:4.4,reviews:1600,up:13,vibes:['Outdoors','Quiet'],tip:'Walk the edge of the lake in the early morning.',by:'sneha_p'},
+ {id:'yeoor',name:'Yeoor Hills',area:'Thane',cat:'nature',lat:19.2455,lng:72.9650,cost:0,rating:4.6,reviews:350,up:24,vibes:['Outdoors','Quiet'],tip:'Start early and carry water. A green break from the city.',by:'riya_k'},
+ {id:'upvan',name:'Upvan Lake',area:'Thane',cat:'nature',lat:19.2243,lng:72.9746,cost:0,rating:4.3,reviews:700,up:16,vibes:['Outdoors','Social'],tip:'Evening walks with a view of the hills.',by:'aditya.t'},
+ {id:'masunda',name:'Masunda Talao',area:'Thane West',cat:'nature',lat:19.1878,lng:72.9738,cost:0,rating:4.4,reviews:1100,up:18,vibes:['Outdoors','Aesthetic'],tip:'A good break between classes and exams. Best at dusk.',by:'meera_j'},
+ {id:'kopi',name:'Kopineshwar Mandir',area:'Thane West',cat:'culture',lat:19.1842,lng:72.9711,cost:0,rating:4.6,reviews:140,up:12,vibes:['Quiet','Historic'],tip:'A calm temple stop. Dress modestly.',by:'kabir.s'},
+ {id:'mamledar',name:'Mamledar Misal',area:'Thane West',cat:'food',lat:19.1892,lng:72.9768,cost:90,rating:4.5,reviews:3200,up:29,vibes:['Social'],tip:'Misal is the order. Expect a queue at peak hours.',by:'riya_k'},
+ {id:'durgadi',name:'Durgadi Fort',area:'Kalyan',cat:'view',lat:19.2512,lng:73.1265,cost:0,rating:4.2,reviews:450,up:14,vibes:['Historic','Outdoors'],tip:'Old fort walls near the creek. Late afternoon is cooler.',by:'neel_r'},
+ {id:'ulhas',name:'Ulhas Riverside Ghat',area:'Kalyan',cat:'nature',lat:19.2478,lng:73.1402,cost:0,rating:4.6,reviews:55,up:6,vibes:['Quiet','Outdoors'],tip:'A calm riverside seat for a break. Added by a Kalyan student.',by:'neel_r'},
+ {id:'phadke',name:'Phadke Road',area:'Dombivli East',cat:'culture',lat:19.2175,lng:73.0905,cost:0,rating:4.5,reviews:90,up:10,vibes:['Social','Aesthetic'],tip:'Lively around festivals. Walk it in the evening.',by:'zoya.a'},
+ {id:'ambernath',name:'Ambernath Shiv Mandir',area:'Ambernath',cat:'culture',lat:19.1935,lng:73.1940,cost:0,rating:4.6,reviews:1300,up:20,vibes:['Historic','Quiet'],tip:'Ancient stone carving. Carry a camera and some patience.',by:'meera_j'},
+ {id:'titwala',name:'Titwala Mahaganapati',area:'Titwala',cat:'culture',lat:19.2995,lng:73.2060,cost:0,rating:4.6,reviews:900,up:15,vibes:['Quiet','Historic'],tip:'A peaceful temple town for a day trip.',by:'sneha_p'},
+ {id:'vashiprom',name:'Vashi Creek Promenade',area:'Vashi',cat:'view',lat:19.0700,lng:73.0040,cost:0,rating:4.3,reviews:420,up:9,vibes:['Outdoors','Quiet'],tip:'Evening walk by the creek. Fewer people on weekdays.',by:'neel_r'},
+ {id:'belapurfort',name:'Belapur Fort',area:'CBD Belapur',cat:'view',lat:19.0185,lng:73.0420,cost:0,rating:4.3,reviews:600,up:11,vibes:['Historic','Outdoors'],tip:'A small hilltop fort with a creek view. Go in the cooler hours.',by:'kabir.s'},
+ {id:'centralpark',name:'Central Park',area:'Kharghar',cat:'nature',lat:19.0370,lng:73.0650,cost:0,rating:4.4,reviews:900,up:13,vibes:['Outdoors','Social'],tip:'Wide lawns and cycling paths. Quietest early morning.',by:'zoya.a'},
+ {id:'pandavkada',name:'Pandavkada Falls',area:'Kharghar Hills',cat:'nature',lat:19.0590,lng:73.0680,cost:0,rating:4.4,reviews:1900,up:16,vibes:['Outdoors','Aesthetic'],tip:'Best after the rains. Wear grip shoes and avoid heavy-rain days.',by:'riya_k'},
+ {id:'panvellake',name:'Vadale Lake',area:'Panvel',cat:'nature',lat:18.9830,lng:73.1230,cost:0,rating:4.2,reviews:220,up:8,vibes:['Quiet','Outdoors'],tip:'A calm lakeside stop near the station. Good at dusk.',by:'sneha_p'},
+ {id:'karnala',name:'Karnala Bird Sanctuary',area:'Panvel',cat:'nature',lat:18.8890,lng:73.1190,cost:60,rating:4.5,reviews:1400,up:19,vibes:['Outdoors','Quiet'],tip:'Entry fee applies. Start early for the fort trail.',by:'meera_j'}
+];
+
+const TRAILS=[
+ {id:'t1',title:'Free study day, South Mumbai',blurb:'Two reading rooms, then sunset over the docks. No spend needed.',stops:['asiatic','sassoonlib','sassoondock']},
+ {id:'t2',title:'Dadar under ₹300',blurb:'Vada pav, a proper thali and the flower market in one walkable patch.',stops:['ashok','aaswad','phool']},
+ {id:'t3',title:'Thane lakes and hills',blurb:'A green loop with a misal stop to finish.',stops:['yeoor','upvan','masunda','mamledar']},
+ {id:'t4',title:'Bandra on ₹100',blurb:'Fort views, then pani puri.',stops:['bandrafort','elco']},
+ {id:'t5',title:'Kalyan, Dombivli and beyond',blurb:'A free weekend of forts, ghats and old temples along the Central line.',stops:['durgadi','ulhas','phadke','ambernath','titwala']},
+ {id:'t6',title:'Harbour line to Panvel',blurb:'Creekside walk, a fort, a park and a waterfall, all off one line.',stops:['vashiprom','belapurfort','centralpark','pandavkada','panvellake']}
+];
+
+const SCOUTS=[
+ {h:'riya_k',pts:340,n:31},{h:'aditya.t',pts:295,n:27},{h:'sneha_p',pts:250,n:22},
+ {h:'kabir.s',pts:190,n:16},{h:'meera_j',pts:160,n:14},{h:'zoya.a',pts:120,n:10},{h:'neel_r',pts:85,n:7}
+];
+
+
+/* ---------- Petrol pumps and EV charging (sample data, approximate positions) ---------- */
+const FAC=[
+['f1','fuel','Indian Oil','Nariman Point',18.9262,72.8235,'Petrol · Diesel · Open 24 hours'],
+['f2','fuel','HPCL','Dadar',19.0178,72.8478,'Petrol · Diesel · CNG · Open 24 hours','CCS2 · 30 kW'],
+['f3','fuel','BPCL','Worli',19.0105,72.8180,'Petrol · Diesel · Open 24 hours'],
+['f4','fuel','Indian Oil','Andheri',19.1300,72.8360,'Petrol · Diesel · CNG · Open 24 hours','CCS2 · 60 kW'],
+['f5','fuel','BPCL','Kurla',19.0720,72.8800,'Petrol · Diesel · CNG · Open 24 hours'],
+['f6','fuel','Jio-bp','Mulund',19.1790,72.9500,'Petrol · Diesel · Open 24 hours','CCS2 + Type 2 · 60 kW'],
+['f7','fuel','HPCL','Thane',19.2090,72.9770,'Petrol · Diesel · Open 24 hours'],
+['f8','fuel','Shell','Vashi',19.0770,73.0040,'Petrol · Diesel · Open 24 hours','CCS2 · 60 kW'],
+['f9','fuel','Indian Oil','Nerul',19.0345,73.0240,'Petrol · Diesel · CNG · Open 24 hours'],
+['f10','fuel','HPCL','CBD Belapur',19.0180,73.0420,'Petrol · Diesel · Open 24 hours','CCS2 · 30 kW'],
+['f11','fuel','BPCL','Kharghar',19.0350,73.0720,'Petrol · Diesel · CNG · Open 24 hours'],
+['f12','fuel','Indian Oil','Panvel',18.9960,73.1220,'Petrol · Diesel · CNG · Open 24 hours','CCS2 · 60 kW'],
+['f13','fuel','HPCL','Kalyan',19.2400,73.1350,'Petrol · Diesel · Open 24 hours'],
+['e1','ev','Tata Power','BKC',19.0680,72.8690,'CCS2 + Type 2 · up to 60 kW · 4 ports'],
+['e2','ev','Statiq','Fort',18.9360,72.8330,'CCS2 · up to 30 kW · 2 ports'],
+['e3','ev','Jio-bp pulse','Bandra West',19.0560,72.8300,'CCS2 + Type 2 · up to 120 kW · 4 ports'],
+['e4','ev','Tata Power','Andheri East',19.1190,72.8570,'Type 2 AC · 22 kW · 6 ports'],
+['e5','ev','Statiq','Powai',19.1200,72.9050,'CCS2 · up to 60 kW · 2 ports'],
+['e6','ev','ChargeZone','Borivali',19.2300,72.8590,'CCS2 · up to 60 kW · 2 ports'],
+['e7','ev','Statiq','Thane',19.2060,72.9690,'CCS2 · up to 60 kW · 2 ports'],
+['e8','ev','Tata Power','Vashi',19.0740,73.0050,'CCS2 + Type 2 · up to 60 kW · 4 ports'],
+['e9','ev','ChargeZone','Nerul',19.0335,73.0235,'CCS2 · up to 30 kW · 2 ports'],
+['e10','ev','Statiq','CBD Belapur',19.0235,73.0400,'CCS2 · up to 60 kW · 2 ports'],
+['e11','ev','Tata Power','Kharghar',19.0300,73.0660,'CCS2 + Type 2 · up to 30 kW · 4 ports'],
+['e12','ev','Jio-bp pulse','Panvel',18.9940,73.1180,'CCS2 · up to 120 kW · 4 ports'],
+['e13','ev','Tata Power','Kalyan',19.2350,73.1300,'Type 2 AC · 22 kW · 2 ports'],
+['e14','ev','Statiq','Dombivli',19.2180,73.0900,'CCS2 · up to 30 kW · 2 ports']
+].map(r=>({id:'fx'+r[0],type:r[1],name:r[2]+(r[1]==='ev'?' EV charging':' petrol pump'),area:r[3],lat:r[4],lng:r[5],info:r[6],ev:r[7]||''}));
+const PUMP='<path class="pump" d="M5 21V4.5A1.5 1.5 0 0 1 6.5 3h6A1.5 1.5 0 0 1 14 4.5V21M3 21h13M7.5 7.5h4M14 9.5h2a1.5 1.5 0 0 1 1.5 1.5v5.5a1.5 1.5 0 0 0 3 0V8L18 5.5"/>';
+const BOLT='<path class="bolt" d="M13.5 2L5 13.5h6L10 22l9-12h-6z"/>';
+const facOn=()=>FAC.filter(f=>S.ly[f.type]);
+function facMarks(tf){
+  return facOn().map(f=>{
+    const ev=f.type==='ev',sel=S.fsel===f.id;
+    return '<g class="fpin'+(ev?' ev':'')+'" data-id="'+f.id+'" tabindex="0" role="button" aria-label="'+esc(f.name+', '+f.area+(f.ev?', EV charger on site':''))+'" transform="'+tf(X(f.lng),Y(f.lat))+'">'+(sel?'<circle class="halo" r="15"/>':'')+
+      (ev?'<circle class="fb" r="10"/><g transform="translate(-7 -7.5) scale(.6)">'+BOLT+'</g>':'<rect class="fb" x="-9" y="-9" width="18" height="18" rx="5"/><g transform="translate(-7 -7) scale(.58)">'+PUMP+'</g>'+(f.ev?'<circle class="badge" cx="8" cy="-8" r="6"/><g transform="translate(5.3 -11.4) scale(.28)">'+BOLT+'</g>':''))+
+      (sel?'<text class="plabel" x="15" y="4">'+esc(f.name)+'</text>':'')+'<title>'+esc(f.name)+'</title></g>';
+  }).join('');
+}
+function facPeek(f){
+  const ns=nearestStation(f.lat,f.lng),ev=f.type==='ev';
+  return '<div style="min-width:0"><h3>'+esc(f.name)+'</h3><div class="meta"><span class="cat"><i class="dot" style="--cc:'+(ev?'var(--sign)':'var(--ink)')+'"></i>'+(ev?'EV charging point':'Petrol pump')+'</span><span class="stn">'+esc(ns.s.name)+'</span><span class="area">'+esc(f.area)+'</span></div><p class="area">'+esc(f.info)+(f.ev?' · EV on site: '+esc(f.ev):'')+'</p></div>'+
+    '<button class="x" data-act="peekclose" aria-label="Close details">&times;</button><div class="actions" style="grid-column:1/-1"><a class="btn ghost sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&amp;query='+f.lat+','+f.lng+'">Open in Maps</a></div>';
+}
+function selectFac(id){S.fsel=id;S.sel=null;renderPanels();const f=FAC.find(x=>x.id===id);if(f)focusPlace(f)}
+function renderLegend(){
+  $('#legend').innerHTML=Object.values(CATS).map(c=>'<div><i class="dot" style="--cc:'+c.color+'"></i>'+c.label+'</div>').join('')+
+    (S.ly.fuel?'<div><i class="dot" style="--cc:var(--ink);border-radius:3px"></i>Petrol pump</div>':'')+(S.ly.ev?'<div><i class="dot" style="--cc:var(--sign)"></i>EV charging</div>':'')+
+    (S.ly.fuel&&S.ly.ev?'<small>Bolt badge = EV charger at a petrol pump</small>':'')+'<small>Pin size shows Gem Score</small>';
+}
+
+/* ---------- Theme, stickers, badges, reviews, safety, offers, share ---------- */
+const THEME_KEY='cityscout.theme';
+const getTheme=()=>{try{return localStorage.getItem(THEME_KEY)||'auto'}catch(e){return 'auto'}};
+function applyTheme(t){
+  const r=document.documentElement;if(t==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',t);
+  const ic={auto:'<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',light:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',dark:'<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>'};
+  $('#themeIcon').innerHTML=ic[t];$('#themeLbl').textContent=t[0].toUpperCase()+t.slice(1);
+  $('#themeBtn').setAttribute('aria-label','Theme: '+t+'. Click to change.');
+}
+const STK=[{n:'Skip it',r:2.5,c:'#AEB8BA'},{n:'Okay',r:3.2,c:'#F2C94C'},{n:'Good',r:3.9,c:'#8FD694'},{n:'Great',r:4.5,c:'#3CCDBE'},{n:'Hidden gem',r:5,c:'#B995F7'}];
+const stkOf=r=>{let b=0;STK.forEach((x,i)=>{if(Math.abs(x.r-r)<Math.abs(STK[b].r-r))b=i});return b};
+function stickerSvg(i,sz){
+  const ink='#14130A',m=['<path d="M14 28Q20 22 26 28" fill="none"','<path d="M14 26h12" fill="none"','<path d="M14 24Q20 31 26 24" fill="none"','<path d="M13 23Q20 34 27 23Z" fill="#fff"'][i];
+  const face=i===4?'<path d="M20 9l9 8-9 14-9-14z" fill="#fff" stroke="'+ink+'" stroke-width="1.8" stroke-linejoin="round"/><path d="M11 17h18M16 17l4-8 4 8" fill="none" stroke="'+ink+'" stroke-width="1.2"/>':'<circle cx="15" cy="17" r="2" fill="'+ink+'"/><circle cx="25" cy="17" r="2" fill="'+ink+'"/>'+m+' stroke="'+ink+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+  return '<svg class="stk" width="'+sz+'" height="'+sz+'" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18.5" fill="#fff" stroke="rgba(0,0,0,.2)"/><circle cx="20" cy="20" r="15.5" fill="'+STK[i].c+'"/>'+face+'</svg>';
+}
+const pickHTML=sel=>STK.map((x,i)=>'<button type="button" role="radio" aria-checked="'+(i===sel)+'" data-st="'+i+'">'+stickerSvg(i,34)+'<span>'+x.n+'</span></button>').join('');
+const renderPick=(el,sel)=>{el.innerHTML=pickHTML(sel)};
+const pickVal=(el,def)=>{const b=el.querySelector('[aria-checked="true"]');return b?+b.dataset.st:def};
+
+/* reviews: in this prototype they live in the viewer's browser only */
+const SEED_REV={
+ sassoonlib:[{id:'sr1',st:3,text:'Silent hall and working fans. Got a full three hours of revision done.',spent:0,again:true,helpful:9,by:'aditya.t'}],
+ ashok:[{id:'sr2',st:4,text:'Crispy vada, gone in two minutes. Go before 6pm or the queue is long.',spent:40,again:true,helpful:14,by:'riya_k'}],
+ elco:[{id:'sr3',st:2,text:'Both pani puri waters are great. A bit rushed at peak hours.',spent:80,again:true,helpful:5,by:'sneha_p'}]
+};
+const ownRev=p=>(S.reviews[p.id]||[]).filter(r=>!S.revReported.has(r.id));
+const reviewsFor=p=>(SEED_REV[p.id]||[]).concat(S.reviews[p.id]||[]).filter(r=>!S.revReported.has(r.id));
+const REV_W=5; /* prototype: each local review weighs 5 so one review visibly moves the Gem Score */
+const effReviews=p=>p.reviews+ownRev(p).length;
+const effRating=p=>{const o=ownRev(p);return o.length?(p.rating*p.reviews+REV_W*o.reduce((a,r)=>a+STK[r.st].r,0))/(p.reviews+REV_W*o.length):p.rating};
+
+/* reactions, safety, offers (counts for sample places are illustrative) */
+const REACT=[['walk','Worth the walk'],['wallet','Wallet friendly'],['quiet','Quiet enough to study'],['friends','Great with friends']];
+const SAFEK=[['lit','Well lit'],['crowd','People around at night'],['solo','Solo-friendly']];
+const OFFERS={kyani:'10% off with a college ID (sample)',aaswad:'10% off the thali on weekdays with ID (sample)',mamledar:'Free extra pav with a college ID (sample)',fashion:'Ask for the student rate on bundles (sample)',elco:'Extra plate sweetener on ID (sample)'};
+const offerOf=p=>p.offer||OFFERS[p.id]||'';
+const hsh=t=>{let x=7;for(const c of t)x=(x*31+c.charCodeAt(0))%997;return x};
+function seedCnt(p,k){
+  if(p.by==='you')return 0;
+  const h=hsh(p.id+k),v=p.vibes||[];
+  if(k==='walk')return v.includes('Outdoors')||v.includes('Historic')?8+h%9:h%4;
+  if(k==='wallet')return p.cost<=100?8+h%10:h%3;
+  if(k==='quiet')return v.includes('Quiet')?8+h%9:h%3;
+  if(k==='friends')return v.includes('Social')?8+h%10:h%4;
+  if(k==='lit')return p.cat==='nature'?1+h%4:4+h%8;
+  if(k==='crowd')return p.cat==='nature'?h%3:3+h%9;
+  return 3+h%9;
+}
+const cnt=(p,k)=>seedCnt(p,k)+(S.mine.has(p.id+':'+k)?1:0);
+const safeOk=p=>cnt(p,'lit')>=5&&cnt(p,'solo')>=5&&cnt(p,'crowd')>=3;
+
+function revHTML(r){
+  const on=S.helpful.has(r.id);
+  return '<li class="rev"><span>'+stickerSvg(r.st,34)+'</span><div><b>'+STK[r.st].n+'</b> <small>· spent '+money(r.spent)+' · '+(r.again?'would go again':'would not go again')+' · '+(r.by==='you'?'you':'@'+esc(r.by))+'</small><p>'+esc(r.text)+'</p><div class="revact">'+
+   (r.by==='you'?'':'<button type="button" class="btn ghost sm" data-act="revhelp" data-id="'+r.id+'" aria-pressed="'+on+'">Helpful ('+(r.helpful+(on?1:0))+')</button>')+
+   '<button type="button" class="btn ghost sm" data-act="revreport" data-id="'+r.id+'">Report</button></div></div></li>';
+}
+function extraHTML(p){
+  const id=p.id,rs=reviewsFor(p),off=offerOf(p);
+  const chips=a=>a.map(x=>{const k=id+':'+x[0];return '<button type="button" class="chip" data-act="react" data-id="'+k+'" aria-pressed="'+S.mine.has(k)+'">'+x[1]+' <span class="n">'+cnt(p,x[0])+'</span></button>'}).join('');
+  return (off?'<p class="offerbox"><b>Student offer:</b> '+esc(off)+'</p>':'')+
+   '<div class="rx"><span class="lbl">Reactions</span><div class="chips small">'+chips(REACT)+'</div></div>'+
+   '<div class="rx"><span class="lbl">Safety, tap what matched your visit</span><div class="chips small">'+chips(SAFEK)+'</div></div>'+
+   '<div class="revs"><h4>Reviews <small>'+effReviews(p)+' total</small></h4>'+
+   (rs.length?'<ul class="revlist">'+rs.map(revHTML).join('')+'</ul>':'<p class="area" style="margin-bottom:8px">No written reviews yet. Be the first.</p>')+
+   '<form class="revform" data-id="'+id+'" novalidate><span class="lbl">Your review</span><div class="stkpick" role="radiogroup" aria-label="Your sticker rating">'+pickHTML(-1)+'</div>'+
+   '<textarea maxlength="200" aria-label="Review text, up to 200 characters" placeholder="What was it like? (200 characters)"></textarea><div class="cnt">0/200</div>'+
+   '<div class="revrow"><label>Spent ₹ <input type="number" min="0" max="2000" step="5" value="'+p.cost+'" aria-label="Amount spent in rupees"></label><label><input type="checkbox" checked> Would go again</label></div>'+
+   '<div><button class="btn sm" type="submit">Post review</button> <span class="err" aria-live="polite"></span></div>'+
+   '<p class="hint">Prototype: reviews are saved only in this browser. Shared reviews need a backend such as Firebase.</p></form></div>';
+}
+function submitReview(e){
+  const f=e.target.closest&&e.target.closest('.revform');if(!f)return;
+  e.preventDefault();
+  const p=byId(f.dataset.id),sk=f.querySelector('.stkpick [aria-checked="true"]'),err=f.querySelector('.err');
+  const text=f.querySelector('textarea').value.trim(),spent=+f.querySelector('input[type=number]').value;
+  if(!sk){err.textContent='Pick a sticker first.';return}
+  if(text.length<5){err.textContent='Write a few words about your visit.';return}
+  if(!(spent>=0&&spent<=2000)){err.textContent='Enter a spend between 0 and 2000.';return}
+  const before=gem(p);
+  (S.reviews[p.id]=S.reviews[p.id]||[]).push({id:'r'+Date.now(),st:+sk.dataset.st,text:text.slice(0,200),spent:Math.round(spent),again:f.querySelector('input[type=checkbox]').checked,helpful:0,by:'you'});
+  persist();const after=gem(p);renderPanels();
+  toast(withBadges('Review posted. Gem Score '+before+' to '+after+'.'));
+}
+
+/* badges */
+const BADGES=[
+ {k:'first',n:'First Gem',d:'Add your first place',need:1,c:'#F7C600',ic:'<path d="M12 3l7 6-7 12L5 9z"/><path d="M5 9h14"/>'},
+ {k:'chai',n:'Chai Hunter',d:'Verify or review 2 food spots',need:2,c:'#F4A261',ic:'<path d="M5 9h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M16 10h2a2 2 0 0 1 0 4h-2"/>'},
+ {k:'lib',n:'Library Lurker',d:'Verify or review 2 study spots',need:2,c:'#8FA2FF',ic:'<path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/>'},
+ {k:'sun',n:'Sunset Chaser',d:'Verify or review 2 viewpoints or nature spots',need:2,c:'#FF8FBF',ic:'<path d="M5 17a7 7 0 0 1 14 0M3 17h18M12 5v3M5.5 10.5L7 12M18.5 10.5L17 12"/>'},
+ {k:'budget',n:'Budget Hero',d:'Verify or review 3 places under ₹100',need:3,c:'#72D27A',ic:'<path d="M9 7h6M9 10.5h6M10 7c4 0 4 5 0 5l4 5"/>'}
+];
+function badgeProg(){
+  const ids=new Set([...S.verified,...Object.keys(S.reviews).filter(k=>S.reviews[k].length),...S.user.map(p=>p.id)]);
+  const ps=[...ids].map(byId).filter(Boolean),n=f=>ps.filter(f).length;
+  return {first:S.user.length,chai:n(p=>p.cat==='food'),lib:n(p=>p.cat==='study'),sun:n(p=>p.cat==='view'||p.cat==='nature'),budget:n(p=>p.cost<=100)};
+}
+function checkBadges(){const pr=badgeProg(),got=[];BADGES.forEach(b=>{if(pr[b.k]>=b.need&&!S.earned.includes(b.k)){S.earned.push(b.k);got.push(b.n)}});if(got.length)persist();return got.join(', ')}
+const withBadges=m=>{const g=checkBadges();return g?m+' New badge: '+g+'!':m};
+function badgeSvg(b,lock,sz){
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="'+(lock?'var(--surface2)':b.c)+'" stroke="#14130A" stroke-width="2.5"/><circle cx="32" cy="32" r="24" fill="none" stroke="#14130A" stroke-width="1.5" stroke-dasharray="3 3" opacity=".6"/><g transform="translate(17 17) scale(1.25)" fill="none" stroke="'+(lock?'var(--muted)':'#14130A')+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+b.ic+'</g></svg>';
+}
+function renderShelf(){
+  const pr=badgeProg();
+  $('#shelf').innerHTML=BADGES.map(b=>{const on=S.earned.includes(b.k);return '<div class="bdg'+(on?'':' lock')+'">'+badgeSvg(b,!on,64)+'<b>'+b.n+'</b><small>'+(on?'Earned':Math.min(pr[b.k],b.need)+' of '+b.need)+'. '+b.d+'</small></div>'}).join('');
+}
+
+/* share card */
+let shareBlob=null,shareUrl='',shareTitle='',shareText='';
+const fitText=(c,t,w)=>{if(c.measureText(t).width<=w)return t;while(t.length>1&&c.measureText(t+'…').width>w)t=t.slice(0,-1);return t+'…'};
+async function shareCard(title,stops,text){
+  if(!stops.length){toast('Nothing to share yet');return}
+  try{await document.fonts.ready}catch(e){}
+  const W=1080,rows=Math.min(stops.length,8),Hh=380+rows*120+230,cv=document.createElement('canvas');
+  cv.width=W;cv.height=Hh;const c=cv.getContext('2d');
+  const F='Archivo,"Arial Narrow",Arial,sans-serif',B='"Public Sans",system-ui,Arial,sans-serif';
+  c.fillStyle='#F1F5F4';c.fillRect(0,0,W,Hh);c.fillStyle='#0A6F63';c.fillRect(0,0,W,300);
+  c.fillStyle='#F7C600';c.fillRect(60,56,170,50);c.textBaseline='middle';
+  c.fillStyle='#14130A';c.font='800 30px '+F;c.fillText('TRAIL',84,82);
+  c.fillStyle='#fff';c.font='800 36px '+F;c.textAlign='right';c.fillText('CityScout',W-60,82);c.textAlign='left';
+  c.font='800 58px '+F;const lines=[];let cur='';
+  title.split(' ').forEach(w=>{const t=cur?cur+' '+w:w;if(c.measureText(t).width>W-120&&cur){lines.push(cur);cur=w}else cur=t});lines.push(cur);
+  lines.slice(0,2).forEach((l,i)=>c.fillText(l,60,172+i*68));
+  const y0=380;
+  if(rows>1){c.strokeStyle='#6A7E82';c.lineWidth=6;c.lineCap='round';c.setLineDash([1,14]);c.beginPath();c.moveTo(100,y0);c.lineTo(100,y0+(rows-1)*120);c.stroke();c.setLineDash([])}
+  stops.slice(0,rows).forEach((p,i)=>{
+    const y=y0+i*120;
+    c.fillStyle='#F7C600';c.strokeStyle='#14130A';c.lineWidth=4;c.beginPath();c.arc(100,y,30,0,7);c.fill();c.stroke();
+    c.fillStyle='#14130A';c.font='800 30px '+F;c.textAlign='center';c.fillText(String(i+1),100,y+2);c.textAlign='left';
+    c.fillStyle='#10252A';c.font='800 40px '+F;c.fillText(fitText(c,p.name,W-60-160-190),160,y-14);
+    c.fillStyle='#506569';c.font='500 28px '+B;c.fillText(fitText(c,p.area,W-60-160-190),160,y+26);
+    c.textAlign='right';c.fillStyle='#0A6F63';c.font='700 34px '+B;c.fillText(p.cost?'₹'+p.cost:'Free',W-60,y);c.textAlign='left';
+  });
+  const tot=stops.reduce((a,p)=>a+p.cost,0);
+  c.fillStyle='#10252A';c.fillRect(0,Hh-190,W,190);
+  c.fillStyle='#F7C600';c.font='800 64px '+F;c.fillText(tot?'₹'+tot+' total':'Free day',60,Hh-125);
+  c.fillStyle='#E6F0EE';c.font='500 28px '+B;c.fillText(stops.length+' stops'+(stops.length>rows?' ('+rows+' shown)':'')+'  ·  Planned with CityScout',60,Hh-55);
+  cv.toBlob(b=>{
+    if(!b){toast('Could not make the image');return}
+    if(shareUrl)URL.revokeObjectURL(shareUrl);
+    shareBlob=b;shareUrl=URL.createObjectURL(b);shareTitle=title;shareText=text;
+    $('#shareImg').src=shareUrl;$('#shareWa').href='https://wa.me/?text='+encodeURIComponent(text);
+    const d=$('#shareDlg');if(d.showModal)d.showModal();else d.setAttribute('open','');
+  },'image/png');
+}
+async function doShare(){
+  if(!shareBlob)return;
+  const file=new File([shareBlob],'cityscout-trail.png',{type:'image/png'});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:shareTitle,text:shareText});return}}catch(e){if(e&&e.name==='AbortError')return}
+  downloadShare();toast('Saved the image. Attach it in Instagram or WhatsApp.');
+}
+function downloadShare(){if(!shareUrl)return;const a=document.createElement('a');a.href=shareUrl;a.download='cityscout-trail.png';document.body.appendChild(a);a.click();a.remove()}
+function closeShare(){const d=$('#shareDlg');if(d.close)d.close();else d.removeAttribute('open')}
+
+/* ---------- Geometry ---------- */
+const W=920,H=1000,LAT0=19.32,LAT1=18.84,LNG0=72.78,LNG1=73.24;
+const X=lng=>(lng-LNG0)/(LNG1-LNG0)*W;
+const Y=lat=>(LAT0-lat)/(LAT0-LAT1)*H;
+const LNGX=x=>LNG0+x/W*(LNG1-LNG0);
+const LATY=y=>LAT0-y/H*(LAT0-LAT1);
+function km(a,b,c,d){
+  const R=6371,t=Math.PI/180,dl=(c-a)*t,dn=(d-b)*t;
+  const h=Math.sin(dl/2)**2+Math.cos(a*t)*Math.cos(c*t)*Math.sin(dn/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function nearestStation(lat,lng){
+  let best=null,bd=1e9;
+  for(const s of STATIONS){const d=km(lat,lng,s.lat,s.lng);if(d<bd){bd=d;best=s}}
+  return {s:best,km:bd,walk:Math.round(bd*1000/80)};
+}
+
+/* ---------- Gem Score ---------- */
+function gemScore(rating,reviews,up){
+  const base=Math.max(0,Math.min(1,(rating-2.5)/2.5));
+  const crowd=Math.min(1,Math.log10(1+reviews)/3.3);
+  const boost=1+Math.min(up,50)/250;
+  return Math.max(0,Math.min(100,Math.round(100*base*(1-0.55*crowd)*boost)));
+}
+const GEM_MIN=55;
+function tier(g){return g>=GEM_MIN?'Hidden gem':g>=42?'Local favourite':g>=30?'Well known':'Crowd magnet'}
+function crowdLabel(n){return n<100?'Few people know it':n<500?'Lightly known':n<1500?'Well known':'Very crowded'}
+
+/* ---------- State and helpers ---------- */
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>[...(r||document).querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEY='cityscout.v1';
+const S={reviews:{},helpful:new Set(),revReported:new Set(),mine:new Set(),earned:[],solo:false,offer:false,tab:'explore',q:'',cat:'all',max:500,vibes:new Set(),gemsOnly:false,sort:'gem',stn:'',sel:null,trail:null,
+  saved:new Set(),verified:new Set(),flagged:new Set(),user:[],draft:null,fVibes:new Set(),photo:'',fsel:null,ly:{fuel:false,ev:false}};
+try{
+  const d=JSON.parse(localStorage.getItem(KEY)||'{}');
+  S.saved=new Set(d.saved||[]);S.verified=new Set(d.verified||[]);S.flagged=new Set(d.flagged||[]);
+  S.user=Array.isArray(d.user)?d.user.filter(p=>p&&p.id&&CATS[p.cat]):[];
+  S.reviews=d.reviews&&typeof d.reviews==='object'?d.reviews:{};S.helpful=new Set(d.helpful||[]);S.revReported=new Set(d.revReported||[]);S.mine=new Set(d.mine||[]);S.earned=Array.isArray(d.earned)?d.earned:[];
+}catch(e){}
+function persist(){
+  try{localStorage.setItem(KEY,JSON.stringify({saved:[...S.saved],verified:[...S.verified],flagged:[...S.flagged],user:S.user,reviews:S.reviews,helpful:[...S.helpful],revReported:[...S.revReported],mine:[...S.mine],earned:S.earned}))}catch(e){}
+}
+const allPlaces=()=>PLACES.concat(S.user);
+const byId=id=>allPlaces().find(p=>p.id===id);
+const visible=()=>allPlaces().filter(p=>!S.flagged.has(p.id));
+const effUp=p=>p.up+(S.verified.has(p.id)?1:0);
+const gem=p=>gemScore(effRating(p),effReviews(p),effUp(p));
+const points=()=>S.user.length*10+S.verified.size*2;
+const meStation=()=>S.stn?STATIONS.find(s=>s.id===S.stn):null;
+const money=n=>n===0?'Free':'₹'+n;
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const narrow=()=>matchMedia('(max-width:980px)').matches;
+
+let toastT;
+function toast(msg){
+  const t=$('#toast');t.textContent=msg;t.hidden=false;
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},2800);
+}
+function copyText(text,host){
+  const fallback=()=>{
+    let box=host.querySelector('.copybox');
+    if(!box){box=document.createElement('textarea');box.className='copybox';box.readOnly=true;host.appendChild(box)}
+    box.value=text;box.select();toast('Copy is blocked here. Text is selected, press Ctrl+C.');
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard')).catch(fallback);
+  }else fallback();
+}
+
+/* ---------- Filtering ---------- */
+function distMe(p){const m=meStation();return m?km(p.lat,p.lng,m.lat,m.lng):null}
+function filtered(){
+  const q=S.q.trim().toLowerCase();
+  let r=visible().filter(p=>{
+    if(S.cat!=='all'&&p.cat!==S.cat)return false;
+    if(S.max<500&&p.cost>S.max)return false;
+    if(S.vibes.size&&!p.vibes.some(v=>S.vibes.has(v)))return false;
+    if(S.gemsOnly&&gem(p)<GEM_MIN)return false;if(S.solo&&!safeOk(p))return false;if(S.offer&&!offerOf(p))return false;
+    if(q){
+      const hay=(p.name+' '+p.area+' '+CATS[p.cat].label+' '+p.vibes.join(' ')+' '+p.tip+' '+nearestStation(p.lat,p.lng).s.name).toLowerCase();
+      if(!q.split(/\s+/).every(w=>hay.includes(w)))return false;
+    }
+    return true;
+  });
+  if(S.sort==='cheap')r.sort((a,b)=>a.cost-b.cost||gem(b)-gem(a));
+  else if(S.sort==='near'&&meStation())r.sort((a,b)=>distMe(a)-distMe(b));
+  else r.sort((a,b)=>gem(b)-gem(a));
+  return r;
+}
+
+/* ---------- Cards ---------- */
+const heartSvg='<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.4 5c2 0 3.8 1.1 5.6 3.2C13.800 6.100 15.600 5 17.600 5 21 5 23.100 8.400 21.600 11.800 19.500 16.400 12 21 12 21z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+function stationLine(p){
+  const ns=nearestStation(p.lat,p.lng);
+  const near=ns.walk<=25?ns.walk+' min walk':ns.km.toFixed(1)+' km';
+  const m=meStation();
+  const you=m?' · '+km(p.lat,p.lng,m.lat,m.lng).toFixed(1)+' km from '+esc(m.name):'';
+  return '<span class="stn">'+esc(ns.s.name)+'</span><span class="area">'+near+you+'</span>';
+}
+function actionBtns(p){
+  const saved=S.saved.has(p.id),ver=S.verified.has(p.id);
+  return '<button class="btn ghost sm heart" data-act="save" data-id="'+p.id+'" aria-pressed="'+saved+'">'+heartSvg+(saved?'Saved':'Save')+'</button>'+
+    '<button class="btn ghost sm" data-act="verify" data-id="'+p.id+'" aria-pressed="'+ver+'">'+(ver?'Verified by you':'I have been here')+'</button>'+
+    '<a class="btn ghost sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&amp;query='+p.lat+','+p.lng+'">Open in Maps</a>'+
+    (narrow()?'<button class="btn ghost sm" data-act="locate" data-id="'+p.id+'">Show on map</button>':'')+
+    '<button class="btn ghost sm" data-act="report" data-id="'+p.id+'">Report</button>';
+}
+function cardHTML(p){
+  const g=gem(p),c=CATS[p.cat],sel=S.sel===p.id,up=effUp(p);
+  const thumb=p.photo?'<img src="'+esc(p.photo)+'" alt="">':'<b>'+esc(p.name.trim().charAt(0).toUpperCase())+'</b>';
+  const crowd=Math.min(1,Math.log10(1+effReviews(p))/3.3);
+  let more='';
+  if(sel){
+    more='<div class="more"><p class="tip-text">'+(p.tip?esc(p.tip):'No tip yet.')+' <span class="area">Shared by '+(p.by==='you'?'you':'@'+esc(p.by))+'</span></p>'+
+      '<div class="bk">'+
+      '<div><span>Sticker</span><span class="bar-t"><i style="width:'+Math.round((effRating(p)-2.5)/2.5*100)+'%"></i></span><span class="stkl">'+stickerSvg(stkOf(effRating(p)),22)+STK[stkOf(effRating(p))].n+'</span></div>'+
+      '<div><span>Crowd</span><span class="bar-t"><i style="width:'+Math.round(crowd*100)+'%"></i></span><span class="area">'+crowdLabel(effReviews(p))+'</span></div>'+
+      '<div><span>Verified</span><span class="bar-t"><i style="width:'+Math.min(100,up*2)+'%"></i></span><b class="cost">'+up+'</b></div>'+
+      '</div>'+extraHTML(p)+'<div class="actions">'+actionBtns(p)+'</div></div>';
+  }
+  return '<article class="card" data-id="'+p.id+'" aria-current="'+sel+'">'+
+    '<div class="thumb" style="--cc:'+c.color+'">'+thumb+'</div>'+
+    '<div class="cbody">'+
+      '<div class="chead"><div><h3><button class="ttl" data-act="select" data-id="'+p.id+'">'+esc(p.name)+'</button></h3><div class="area">'+esc(p.area)+'</div></div>'+
+      '<div class="ring" style="--p:'+g+'" title="Gem Score '+g+'"><b>'+g+'</b></div></div>'+
+      '<div class="meta"><span class="cat"><i class="dot" style="--cc:'+c.color+'"></i>'+c.label+'</span><span class="cost">'+money(p.cost)+'</span>'+stationLine(p)+'</div>'+
+      '<div class="tags"><span class="tag">'+tier(g)+'</span>'+(offerOf(p)?'<span class="tag offer">Student offer</span>':'')+(safeOk(p)?'<span class="tag safe">Solo-friendly</span>':'')+p.vibes.map(v=>'<span class="tag">'+esc(v)+'</span>').join('')+(p.by==='you'&&up<3?'<span class="tag pending">Pending verification</span>':'')+'</div>'+
+      (sel?'':'<div class="actions">'+'<button class="btn ghost sm heart" data-act="save" data-id="'+p.id+'" aria-pressed="'+S.saved.has(p.id)+'">'+heartSvg+(S.saved.has(p.id)?'Saved':'Save')+'</button></div>')+
+      more+
+    '</div></article>';
+}
+function keepFocus(fn){
+  const a=document.activeElement;
+  const key=a&&a.dataset&&a.dataset.act?[a.dataset.act,a.dataset.id]:null;
+  fn();
+  if(key){const n=$('[data-act="'+key[0]+'"][data-id="'+key[1]+'"]');if(n)n.focus({preventScroll:true})}
+}
+
+/* ---------- Panels ---------- */
+function renderList(){
+  keepFocus(()=>{
+    const r=filtered();
+    const sel=S.sel&&byId(S.sel);
+    $('#resCount').textContent=r.length+' of '+visible().length+' places';
+    $('#list').innerHTML=r.length?r.map(cardHTML).join(''):
+      '<div class="empty"><b>Nothing matches yet</b>Try a higher budget or fewer vibes.<div style="margin-top:10px"><button class="btn sm" data-act="reset">Clear filters</button></div></div>';
+  });
+  $$('#cats .chip').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cat===S.cat)));
+  $$('#presets .chip').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.max===S.max)));
+  $$('#vibes .chip').forEach(b=>b.setAttribute('aria-pressed',String(S.vibes.has(b.dataset.vibe))));
+  $('#soloOnly').checked=S.solo;$('#offerOnly').checked=S.offer;$('#budgetOut').textContent=S.max>=500?'₹500+ (any)':S.max===0?'Free only':'₹'+S.max;
+}
+function renderStats(){
+  const v=visible();
+  $('#stPlaces').textContent=v.length;
+  $('#stCheap').textContent=v.filter(p=>p.cost<=100).length;
+  $('#stGems').textContent=v.filter(p=>gem(p)>=GEM_MIN).length;
+  $('#savedCount').textContent=[...S.saved].filter(id=>byId(id)&&!S.flagged.has(id)).length;
+}
+function trailStops(t){return t.stops.map(byId).filter(p=>p&&!S.flagged.has(p.id))}
+function trailsText(t){
+  const st=trailStops(t),tot=st.reduce((a,p)=>a+p.cost,0);
+  return t.title+'\n'+st.map((p,i)=>(i+1)+'. '+p.name+' ('+p.area+') '+money(p.cost)).join('\n')+'\nTotal: ₹'+tot+'\nPlanned with CityScout';
+}
+function renderTrails(){
+  $('#trailList').innerHTML=TRAILS.map(t=>{
+    const st=trailStops(t),tot=st.reduce((a,p)=>a+p.cost,0),on=S.trail===t.id;
+    return '<article class="trail" data-trail="'+t.id+'" aria-current="'+on+'"><div><h3>'+esc(t.title)+'</h3><p class="area">'+esc(t.blurb)+'</p></div>'+
+      '<div class="sum"><span>'+st.length+' stops</span><span>Total <b>'+(tot?'₹'+tot:'Free')+'</b></span></div>'+
+      (on?'<ol>'+st.map((p,i)=>'<li><i>'+(i+1)+'</i><span><b>'+esc(p.name)+'</b><br><span class="area">'+esc(p.area)+'</span></span><span class="cost">'+money(p.cost)+'</span></li>').join('')+'</ol>':'')+
+      '<div class="actions"><button class="btn sm" data-act="trail" data-id="'+t.id+'">'+(on?'Hide route':'Show on map')+'</button>'+
+      '<button class="btn ghost sm" data-act="copytrail" data-id="'+t.id+'">Copy plan</button><button class="btn ghost sm" data-act="sharetrail" data-id="'+t.id+'">Share card</button></div></article>';
+  }).join('');
+}
+function renderSaved(){
+  const list=[...S.saved].map(byId).filter(p=>p&&!S.flagged.has(p.id));
+  const box=$('#savedBox');
+  if(!list.length){
+    box.innerHTML='<div class="empty"><b>Nothing saved yet</b>Tap Save on any place and it shows up here with a running total.<div style="margin-top:10px"><button class="btn sm" data-act="tab" data-id="explore">Browse places</button></div></div>';
+    return;
+  }
+  const tot=list.reduce((a,p)=>a+p.cost,0),stn=new Set(list.map(p=>nearestStation(p.lat,p.lng).s.name));
+  box.innerHTML='<div class="sum"><span>'+list.length+' places</span><span>Total <b>'+(tot?'₹'+tot:'Free')+'</b></span><span>'+stn.size+' stations</span></div>'+
+    '<div class="actions" style="margin-bottom:12px"><button class="btn ghost sm" data-act="copysaved">Copy list</button><button class="btn ghost sm" data-act="sharesaved">Share card</button></div>'+
+    '<div class="list">'+list.map(cardHTML).join('')+'</div>';
+}
+function renderScouts(){
+  renderShelf();
+  const me={h:'You',b:S.earned.length,n:S.user.length,me:true};
+  const rows=SCOUTS.map(r=>({h:r.h,n:r.n,b:Math.min(5,Math.ceil(r.pts/70))})).concat([me]).sort((x,y)=>y.b-x.b||y.n-x.n);
+  $('#lb').innerHTML=rows.map((r,i)=>'<li'+(r.me?' class="me"':'')+'><span class="rk">'+(i+1)+'</span><span><b>'+(r.me?'You':'@'+esc(r.h))+'</b>'+(i===0?' <span class="tag">Top scout</span>':'')+'<small>'+r.n+' gems added</small></span><span class="pts">'+r.b+' of 5</span></li>').join('');
+}
+function renderPeek(){
+  const fx=S.fsel&&FAC.find(x=>x.id===S.fsel&&S.ly[x.type]),p=S.sel&&byId(S.sel),box=$('#peek');
+  if(fx){box.hidden=false;box.innerHTML=facPeek(fx);return}
+  if(!p||S.flagged.has(p.id)){box.hidden=true;return}
+  const c=CATS[p.cat],g=gem(p),ns=nearestStation(p.lat,p.lng);
+  box.hidden=false;
+  box.innerHTML='<div style="min-width:0"><h3>'+esc(p.name)+'</h3>'+
+    '<div class="meta"><span class="cat"><i class="dot" style="--cc:'+c.color+'"></i>'+c.label+'</span><span class="cost">'+money(p.cost)+'</span><span class="stn">'+esc(ns.s.name)+'</span><span class="tag">Gem '+g+'</span></div></div>'+
+    '<button class="x" data-act="peekclose" aria-label="Close details">&times;</button>'+
+    '<div class="actions" style="grid-column:1/-1"><button class="btn ghost sm heart" data-act="save" data-id="'+p.id+'" aria-pressed="'+S.saved.has(p.id)+'">'+heartSvg+(S.saved.has(p.id)?'Saved':'Save')+'</button>'+
+    '<button class="btn ghost sm" data-act="details" data-id="'+p.id+'">Details</button>'+
+    '<a class="btn ghost sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&amp;query='+p.lat+','+p.lng+'">Open in Maps</a></div>';
+}
+function renderPanels(){
+  renderStats();
+  if(S.tab==='explore')renderList();
+  else if(S.tab==='trails')renderTrails();
+  else if(S.tab==='saved')renderSaved();
+  else if(S.tab==='scouts')renderScouts();
+  renderPeek();renderMap();
+}
+
+/* ---------- Selection, tabs, filters ---------- */
+function select(id,o){
+  o=o||{};
+  S.sel=id;S.fsel=null;
+  const p=byId(id);
+  if(S.tab==='explore'||S.tab==='saved')renderPanels();else{renderPeek();renderMap()}
+  if(p&&o.center)focusPlace(p);
+  if(o.scroll){const c=$('.card[data-id="'+id+'"]');if(c)c.scrollIntoView({block:'nearest',behavior:reduceMotion?'auto':'smooth'})}
+}
+function setTab(t){
+  S.tab=t;
+  $$('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  $$('.tp').forEach(p=>{p.hidden=p.id!=='p-'+t});
+  $('#map').classList.toggle('addmode',t==='add');
+  $('#maphint').hidden=t!=='add';
+  renderPanels();
+  fitForTab();
+}
+function fitForTab(){
+  if(S.tab==='explore')fitMap(filtered());
+  else if(S.tab==='trails'){const t=TRAILS.find(x=>x.id===S.trail);fitMap(t?trailStops(t):visible())}
+  else if(S.tab==='saved'){const l=[...S.saved].map(byId).filter(p=>p&&!S.flagged.has(p.id));fitMap(l.length?l:visible())}
+  else if(S.tab==='add')fitMap(S.draft?[S.draft]:visible());
+  else fitMap(visible());
+}
+function onFilter(){renderList();renderStats();renderMap();fitMap(filtered())}
+function syncControls(){
+  $('#q').value=S.q;$('#budget').value=S.max;$('#gemsOnly').checked=S.gemsOnly;$('#sort').value=S.sort;$('#stn').value=S.stn;
+}
+function resetFilters(){
+  S.q='';S.cat='all';S.max=500;S.vibes.clear();S.gemsOnly=false;S.solo=false;S.offer=false;S.sort='gem';
+  syncControls();onFilter();
+}
+let catKey='';
+function buildCats(){
+  const v=visible(),key=Object.keys(CATS).map(k=>v.filter(p=>p.cat===k).length).join(',')+'|'+v.length;
+  if(key===catKey)return;catKey=key;
+  $('#cats').innerHTML='<button class="chip" data-cat="all" aria-pressed="'+(S.cat==='all')+'">All <span class="n">'+v.length+'</span></button>'+
+    Object.entries(CATS).map(([k,c])=>'<button class="chip" data-cat="'+k+'" aria-pressed="'+(S.cat===k)+'"><i class="dot" style="--cc:'+c.color+'"></i>'+c.label+' <span class="n">'+v.filter(p=>p.cat===k).length+'</span></button>').join('');
+}
+
+/* ---------- Gem Score lab ---------- */
+function labUpdate(){
+  const r=+$('#labR').value,n=Math.max(0,Math.round(Math.pow(10,+$('#labN').value)-1)),v=+$('#labV').value;
+  const g=gemScore(r,n,v);
+  $('#labRo').textContent=r.toFixed(1);$('#labNo').textContent=n.toLocaleString('en-IN');$('#labVo').textContent=v;
+  $('#labScore').textContent=g;$('#labRingN').textContent=g;$('#labRing').style.setProperty('--p',g);
+  $('#labTier').textContent=tier(g)+'. '+crowdLabel(n)+'.';
+}
+
+/* ---------- Add a gem ---------- */
+function setDraft(lat,lng,fit){
+  lat=Math.max(LAT1,Math.min(LAT0,lat));lng=Math.max(LNG0,Math.min(LNG1,lng));
+  S.draft={lat,lng};
+  $('#locOut').textContent=lat.toFixed(4)+', '+lng.toFixed(4)+' · near '+nearestStation(lat,lng).s.name;
+  $('#eLoc').textContent='';
+  renderMap();
+  if(fit)fitMap([S.draft]);
+}
+function syncVibeChips(){$$('#fVibes .chip').forEach(b=>b.setAttribute('aria-pressed',String(S.fVibes.has(b.dataset.vibe))))}
+function submitGem(e){
+  e.preventDefault();
+  const name=$('#fName').value.trim(),raw=$('#fCost').value,cost=raw===''?NaN:+raw;
+  let ok=true,first=null;
+  const bad=(id,msg,field)=>{$(id).textContent=msg;ok=false;if(!first)first=field};
+  $('#eName').textContent='';$('#eCost').textContent='';$('#eLoc').textContent='';
+  if(name.length<3)bad('#eName','Enter a name with at least 3 characters.',$('#fName'));
+  if(isNaN(cost)||cost<0||cost>2000)bad('#eCost','Enter a spend between 0 and 2000.',$('#fCost'));
+  if(!S.draft)bad('#eLoc','Choose a station, then click the map to place the pin.',$('#fStn'));
+  if(!ok){first.focus();return}
+  const p={id:'u'+Date.now(),name,area:$('#fArea').value.trim()||nearestStation(S.draft.lat,S.draft.lng).s.name+' area',
+    cat:$('#fCat').value,lat:S.draft.lat,lng:S.draft.lng,cost:Math.round(cost),rating:STK[pickVal($('#fStick'),2)].r,offer:$('#fOffer').value.trim(),reviews:1,up:0,
+    vibes:[...S.fVibes],tip:$('#fTip').value.trim(),by:'you',photo:S.photo||''};
+  S.user.push(p);persist();
+  e.target.reset();S.fVibes.clear();syncVibeChips();S.photo='';$('#prev').hidden=true;S.draft=null;$('#locOut').textContent='No pin yet';
+  S.cat='all';S.max=500;S.vibes.clear();S.gemsOnly=false;S.q='';syncControls();
+  S.sel=p.id;buildCats();setTab('explore');focusPlace(p);
+  renderPick($('#fStick'),2);toast(withBadges('Published. It needs 3 local verifications.'));
+}
+function readPhoto(e){
+  const f=e.target.files&&e.target.files[0],pv=$('#prev');
+  S.photo='';pv.hidden=true;
+  if(!f)return;
+  if(!/^image\//.test(f.type)){toast('Choose an image file');e.target.value='';return}
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const s=Math.min(1,480/Math.max(im.width,im.height)),cv=document.createElement('canvas');
+      cv.width=Math.max(1,Math.round(im.width*s));cv.height=Math.max(1,Math.round(im.height*s));
+      cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
+      try{S.photo=cv.toDataURL('image/jpeg',.72)}catch(err){S.photo=''}
+      if(S.photo){pv.src=S.photo;pv.hidden=false}
+    };
+    im.onerror=()=>toast('That image could not be read');
+    im.src=fr.result;
+  };
+  fr.readAsDataURL(f);
+}
+
+/* ---------- Actions ---------- */
+function act(a,id,b){
+  if(a==='select')select(id,{center:true});
+  else if(a==='save'){
+    if(S.saved.has(id))S.saved.delete(id);else S.saved.add(id);
+    persist();toast(S.saved.has(id)?'Saved to your shortlist':'Removed from saved');renderPanels();
+  }
+  else if(a==='verify'){
+    if(S.verified.has(id)){S.verified.delete(id);toast('Verification removed')}
+    else{S.verified.add(id);toast(withBadges('Thanks for verifying.'))}
+    persist();renderPanels();
+  }
+  else if(a==='report'){
+    S.flagged.add(id);if(S.sel===id)S.sel=null;persist();buildCats();
+    toast('Hidden for you. In the full product, three reports send a place to review.');renderPanels();
+  }
+  else if(a==='locate'){select(id,{center:true});$('.mapcol').scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'})}
+  else if(a==='reset')resetFilters();
+  else if(a==='trail'){S.trail=S.trail===id?null:id;renderTrails();renderMap();fitForTab()}
+  else if(a==='copytrail'){const t=TRAILS.find(x=>x.id===id);if(t)copyText(trailsText(t),b.closest('.trail'))}
+  else if(a==='copysaved'){
+    const l=[...S.saved].map(byId).filter(p=>p&&!S.flagged.has(p.id));
+    copyText('My CityScout shortlist\n'+l.map((p,i)=>(i+1)+'. '+p.name+' ('+p.area+') '+money(p.cost)).join('\n')+'\nTotal: ₹'+l.reduce((x,p)=>x+p.cost,0),$('#savedBox'));
+  }
+  else if(a==='react'){if(S.mine.has(id))S.mine.delete(id);else S.mine.add(id);persist();renderPanels()}
+  else if(a==='revhelp'){if(S.helpful.has(id))S.helpful.delete(id);else S.helpful.add(id);persist();renderPanels()}
+  else if(a==='revreport'){S.revReported.add(id);persist();toast('Review hidden for you. In the full product, reports go to moderators.');renderPanels()}
+  else if(a==='sharetrail'){const t=TRAILS.find(x=>x.id===id);if(t)shareCard(t.title,trailStops(t),trailsText(t))}
+  else if(a==='sharesaved'){const l=[...S.saved].map(byId).filter(p=>p&&!S.flagged.has(p.id));shareCard('My CityScout shortlist',l,'My CityScout shortlist\n'+l.map((p,i)=>(i+1)+'. '+p.name).join('\n'))}
+  else if(a==='shareimg')doShare();
+  else if(a==='sharedl')downloadShare();
+  else if(a==='shareclose')closeShare();
+  else if(a==='tab')setTab(id);
+  else if(a==='peekclose'){S.sel=null;S.fsel=null;renderPanels()}
+  else if(a==='details'){
+    if(!filtered().some(p=>p.id===id))resetFilters();
+    if(S.tab!=='explore')setTab('explore');
+    select(id,{scroll:true});
+  }
+}
+
+/* ---------- Map (schematic, drawn in SVG so it needs no tile server) ---------- */
+const svg=$('#map');
+const pt=(lat,lng)=>X(lng).toFixed(1)+','+Y(lat).toFixed(1);
+const poly=a=>a.map(q=>pt(q[0],q[1])).join(' ');
+const WEST=[[19.32,72.82],[19.27,72.83],[19.23,72.81],[19.18,72.80],[19.14,72.80],[19.10,72.82],[19.06,72.82],[19.02,72.815],[18.985,72.805],[18.955,72.788],[18.935,72.803],[18.915,72.808],[18.90,72.815]];
+const BAY=[[18.90,72.84],[18.915,72.836],[18.95,72.846],[18.98,72.852],[19.01,72.866],[19.04,72.89],[19.07,72.925],[19.11,72.945],[19.15,72.968],[19.19,72.982],[19.19,72.992],[19.14,72.990],[19.10,72.990],[19.075,72.992],[19.05,73.003],[19.032,73.012],[19.012,73.030],[19.005,73.055],[18.998,73.085],[18.990,73.106],[18.975,73.098],[18.962,73.075],[18.95,73.05],[18.93,73.03],[18.90,73.02]];
+const PARK=[[19.17,72.885],[19.25,72.89],[19.27,72.95],[19.23,72.975],[19.20,72.945],[19.17,72.92]];
+const stById=id=>STATIONS.find(s=>s.id===id);
+svg.innerHTML=
+  '<rect class="m-land" x="-700" y="-700" width="2600" height="2600"/>'+
+  '<rect class="m-sea" x="-700" y="'+Y(18.90).toFixed(1)+'" width="'+(X(73.02)+700).toFixed(1)+'" height="900"/>'+
+  '<polygon class="m-sea" points="-700,-700 '+X(72.82).toFixed(1)+',-700 '+poly(WEST)+' '+X(72.815).toFixed(1)+',1600 -700,1600"/>'+
+  '<polygon class="m-bay" points="'+X(72.84).toFixed(1)+',1600 '+poly(BAY)+' '+X(73.02).toFixed(1)+',1600"/>'+
+  '<polyline class="m-coast" points="'+poly(WEST)+'"/><polyline class="m-coast" points="'+poly(BAY)+'"/>'+
+  '<polygon class="m-green" points="'+poly(PARK)+'"/>'+
+  '<text class="m-parklbl" x="'+X(72.918).toFixed(1)+'" y="'+Y(19.215).toFixed(1)+'" text-anchor="middle">SGNP</text>'+
+  '<text class="m-sealbl" transform="translate(14 330) rotate(-90)" text-anchor="middle">ARABIAN SEA</text>'+
+  LINES.map(l=>'<polyline class="m-rail '+l.cls+'" points="'+l.pts.map(id=>{const s=stById(id);return pt(s.lat,s.lng)}).join(' ')+'"/>').join('')+
+  '<g id="route"></g><g id="stns"></g><g id="facs"></g><g id="pins"></g>';
+
+let view={cx:W/2,cy:H/2,w:W+80},box={w:0,h:0},anim=0;
+const vbH=()=>box.w?view.w*box.h/box.w:view.w;
+function applyView(){svg.setAttribute('viewBox',(view.cx-view.w/2).toFixed(2)+' '+(view.cy-vbH()/2).toFixed(2)+' '+view.w.toFixed(2)+' '+vbH().toFixed(2))}
+const defaultView=()=>({cx:W/2,cy:H/2,w:Math.max(W+80,box.w?(H+80)*box.w/box.h:0)});
+function animateTo(t,instant){
+  t.w=Math.max(110,Math.min(1300,t.w));
+  cancelAnimationFrame(anim);
+  if(instant||reduceMotion||!box.w){view=t;applyView();renderMap();return}
+  const f={cx:view.cx,cy:view.cy,w:view.w},t0=performance.now(),D=420;
+  const step=now=>{
+    const k=Math.min(1,(now-t0)/D),e=1-Math.pow(1-k,3);
+    view={cx:f.cx+(t.cx-f.cx)*e,cy:f.cy+(t.cy-f.cy)*e,w:f.w+(t.w-f.w)*e};
+    applyView();renderMap();
+    if(k<1)anim=requestAnimationFrame(step);
+  };
+  anim=requestAnimationFrame(step);
+}
+function fitMap(list,instant){
+  if(!list.length){animateTo(defaultView(),instant);return}
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  for(const p of list){const x=X(p.lng),y=Y(p.lat);x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+  const pad=70,bw=Math.max(x1-x0,40)+pad*2,bh=Math.max(y1-y0,40)+pad*2,ar=box.w?box.w/box.h:1;
+  animateTo({cx:(x0+x1)/2,cy:(y0+y1)/2,w:Math.max(bw,bh*ar)},instant);
+}
+function focusPlace(p){animateTo({cx:X(p.lng),cy:Y(p.lat),w:Math.min(view.w,420)})}
+function zoomBy(f,ax,ay){
+  const px=ax==null?view.cx:ax,py=ay==null?view.cy:ay;
+  const w=Math.max(110,Math.min(1300,view.w*f)),k=w/view.w;
+  animateTo({cx:px-(px-view.cx)*k,cy:py-(py-view.cy)*k,w});
+}
+function toSvg(e){
+  const r=svg.getBoundingClientRect();
+  return {x:view.cx-view.w/2+(e.clientX-r.left)/r.width*view.w,y:view.cy-vbH()/2+(e.clientY-r.top)/r.height*vbH()};
+}
+
+function mapModel(){
+  const all=visible();
+  const ids=l=>new Set(l.map(p=>p.id));
+  let main=all,numbered=false,route=null;
+  if(S.tab==='explore')main=filtered();
+  else if(S.tab==='trails'&&S.trail){const t=TRAILS.find(x=>x.id===S.trail);main=trailStops(t);numbered=true;route=main}
+  else if(S.tab==='saved')main=all.filter(p=>S.saved.has(p.id));
+  else if(S.tab==='add')main=S.user.filter(p=>!S.flagged.has(p.id));
+  const sel=S.sel&&all.find(p=>p.id===S.sel);
+  if(sel&&!main.includes(sel))main=main.concat([sel]);
+  const set=ids(main);
+  return {main,ctx:all.filter(p=>!set.has(p.id)),numbered,route};
+}
+function renderMap(){
+  const sc=box.w?view.w/box.w:1,m=mapModel();
+  const fk=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.pin');
+  const fid=fk?fk.dataset.id:null;
+  const tf=(x,y)=>'translate('+x.toFixed(1)+' '+y.toFixed(1)+') scale('+sc.toFixed(4)+')';
+  const me=meStation();
+  // route
+  $('#route').innerHTML=m.route&&m.route.length>1?'<polyline class="m-route" points="'+m.route.map(p=>pt(p.lat,p.lng)).join(' ')+'"/>':'';
+  // stations and rail names
+  let s='<text class="rl" transform="'+tf(X(73.0),Y(19.208))+'">Central line</text><text class="rl" transform="'+tf(X(72.862),Y(19.205))+'">Western line</text><text class="rl" transform="'+tf(X(73.075),Y(19.047))+'">Harbour line</text><text class="rl" transform="'+tf(X(73.05),Y(19.095))+'">Navi Mumbai</text>';
+  for(const st of STATIONS){
+    const isMe=me&&me.id===st.id,show=st.label||isMe||view.w<420;
+    s+='<g class="st'+(isMe?' me':'')+'" transform="'+tf(X(st.lng),Y(st.lat))+'"><circle r="'+(isMe?6:4)+'"/>'+(show?'<text x="9" y="3.5">'+esc(st.name)+'</text>':'')+'</g>';
+  }
+  $('#stns').innerHTML=s;
+  // pins
+  let h='';
+  for(const p of m.ctx)h+='<g transform="'+tf(X(p.lng),Y(p.lat))+'" style="--cc:'+CATS[p.cat].color+'"><circle class="ctx" r="4.5"/></g>';
+  const main=m.main.slice();
+  if(!m.numbered)main.sort((a,b)=>(S.sel===a.id)-(S.sel===b.id)||gem(a)-gem(b));
+  main.forEach((p,i)=>{
+    const g=gem(p),sel=S.sel===p.id,r=m.numbered?12:6+g/100*7;
+    h+='<g class="pin" data-id="'+p.id+'" tabindex="0" role="button" aria-label="'+esc(p.name+', '+CATS[p.cat].label+', Gem Score '+g)+'" transform="'+tf(X(p.lng),Y(p.lat))+'" style="--cc:'+CATS[p.cat].color+'">'+
+      (sel?'<circle class="halo" r="'+(r+6)+'"/>':'')+'<circle class="b" r="'+r.toFixed(1)+'"/>'+
+      (m.numbered?'<text class="n">'+(i+1)+'</text>':'')+
+      ((sel||m.numbered)?'<text class="plabel" x="'+(r+8)+'" y="4">'+esc(p.name)+'</text>':'')+
+      '<title>'+esc(p.name+' · Gem Score '+g)+'</title></g>';
+  });
+  if(S.tab==='add'&&S.draft)h+='<g class="draft" transform="'+tf(X(S.draft.lng),Y(S.draft.lat))+'"><circle r="10"/><path d="M-4 0H4M0 -4V4"/></g>';
+  $('#pins').innerHTML=h;
+  $('#facs').innerHTML=facMarks(tf);
+  if(fid){const n=$('.pin[data-id="'+fid+'"]');if(n)n.focus({preventScroll:true})}
+}
+
+/* map interaction: drag to pan, click a pin to select, click to drop a pin when adding */
+let drag=null;
+svg.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  cancelAnimationFrame(anim);
+  drag={x:e.clientX,y:e.clientY,cx:view.cx,cy:view.cy,moved:false,pin:e.target.closest('.pin,.fpin')};
+  try{svg.setPointerCapture(e.pointerId)}catch(err){}
+});
+svg.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  if(!drag.moved&&Math.hypot(dx,dy)<5)return;
+  drag.moved=true;svg.classList.add('drag');
+  view.cx=Math.max(-100,Math.min(W+100,drag.cx-dx*view.w/box.w));
+  view.cy=Math.max(-100,Math.min(H+100,drag.cy-dy*vbH()/box.h));
+  applyView();
+});
+function endDrag(e){
+  if(!drag)return;
+  const d=drag;drag=null;svg.classList.remove('drag');
+  if(d.moved)return;
+  if(d.pin){if(d.pin.classList.contains('fpin'))selectFac(d.pin.dataset.id);else select(d.pin.dataset.id,{scroll:true})}
+  else if(S.tab==='add'){const q=toSvg(e);setDraft(LATY(q.y),LNGX(q.x),false)}
+}
+svg.addEventListener('pointerup',endDrag);
+svg.addEventListener('pointercancel',()=>{drag=null;svg.classList.remove('drag')});
+svg.addEventListener('dblclick',e=>{const q=toSvg(e);zoomBy(0.55,q.x,q.y)});
+svg.addEventListener('keydown',e=>{
+  const pin=e.target.closest&&e.target.closest('.pin,.fpin');
+  if(pin&&(e.key==='Enter'||e.key===' ')){e.preventDefault();if(pin.classList.contains('fpin'))selectFac(pin.dataset.id);else select(pin.dataset.id,{scroll:true})}
+});
+new ResizeObserver(()=>{
+  const r=svg.getBoundingClientRect();
+  if(!r.width||!r.height)return;
+  const first=!box.w;box.w=r.width;box.h=r.height;
+  if(first){applyView();fitMap(filtered(),true)}else{applyView();renderMap()}
+}).observe(svg);
+
+/* ---------- Boot ---------- */
+(function boot(){
+  const stSorted=STATIONS.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  $('#stn').innerHTML='<option value="">Anywhere</option>'+stSorted.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
+  $('#fStn').innerHTML='<option value="">Start from a station</option>'+stSorted.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
+  $('#presets').innerHTML=[[0,'Free'],[100,'Under ₹100'],[300,'Under ₹300'],[500,'Any']].map(a=>'<button class="chip" type="button" data-max="'+a[0]+'" aria-pressed="false">'+a[1]+'</button>').join('');
+  $('#vibes').innerHTML=VIBES.map(v=>'<button class="chip" type="button" data-vibe="'+v+'" aria-pressed="false">'+v+'</button>').join('');
+  $('#fVibes').innerHTML=VIBES.map(v=>'<button class="chip" type="button" data-vibe="'+v+'" aria-pressed="false">'+v+'</button>').join('');
+  $('#fCat').innerHTML=Object.entries(CATS).map(([k,c])=>'<option value="'+k+'">'+c.label+'</option>').join('');
+  renderLegend();
+  labUpdate();buildCats();renderPanels();
+
+  document.addEventListener('click',e=>{
+    const sk=e.target.closest('.stkpick button');
+    if(sk){$$('button',sk.parentNode).forEach(x=>x.setAttribute('aria-checked',String(x===sk)));return}
+    if(e.target.closest('.revform'))return;
+    const b=e.target.closest('[data-act]');
+    if(b){act(b.dataset.act,b.dataset.id,b);return}
+    let c;
+    if((c=e.target.closest('#cats .chip'))){S.cat=c.dataset.cat;onFilter();return}
+    if((c=e.target.closest('#presets .chip'))){S.max=+c.dataset.max;$('#budget').value=S.max;onFilter();return}
+    if((c=e.target.closest('#vibes .chip'))){const v=c.dataset.vibe;if(S.vibes.has(v))S.vibes.delete(v);else S.vibes.add(v);onFilter();return}
+    if((c=e.target.closest('#fVibes .chip'))){const v=c.dataset.vibe;if(S.fVibes.has(v))S.fVibes.delete(v);else S.fVibes.add(v);syncVibeChips();return}
+    const t=e.target.closest('.tabs button');
+    if(t){setTab(t.dataset.tab);return}
+    const card=e.target.closest('.card');
+    if(card&&!e.target.closest('a,button,input,select,textarea'))select(card.dataset.id,{center:true});
+  });
+  let qT;
+  $('#q').addEventListener('input',e=>{clearTimeout(qT);qT=setTimeout(()=>{S.q=e.target.value;onFilter()},220)});
+  $('#stn').addEventListener('change',e=>{S.stn=e.target.value;onFilter()});
+  $('#sort').addEventListener('change',e=>{
+    S.sort=e.target.value;
+    if(S.sort==='near'&&!S.stn)toast('Pick your station under "I\'m at" to sort by distance.');
+    onFilter();
+  });
+  $('#budget').addEventListener('input',e=>{S.max=+e.target.value;onFilter()});
+  $('#gemsOnly').addEventListener('change',e=>{S.gemsOnly=e.target.checked;onFilter()});
+  ['labR','labN','labV'].forEach(id=>$('#'+id).addEventListener('input',labUpdate));
+  $('#surprise').addEventListener('click',()=>{
+    const r=filtered().slice().sort((a,b)=>gem(b)-gem(a)).slice(0,5);
+    if(!r.length){toast('No places match. Clear a filter first.');return}
+    const p=r[Math.floor(Math.random()*r.length)];
+    select(p.id,{center:true,scroll:true});toast('Try '+p.name);
+  });
+  $('#zin').addEventListener('click',()=>zoomBy(0.6));
+  $('#zout').addEventListener('click',()=>zoomBy(1.6));
+  $('#zfit').addEventListener('click',fitForTab);
+  $('#fStn').addEventListener('change',e=>{const s=stById(e.target.value);if(s)setDraft(s.lat+0.0012,s.lng+0.0012,true)});
+  $('#fPhoto').addEventListener('change',readPhoto);
+  $('#addForm').addEventListener('submit',submitGem);
+  renderPick($('#fStick'),2);applyTheme(getTheme());
+  $('#themeBtn').addEventListener('click',()=>{const o=['auto','light','dark'],n=o[(o.indexOf(getTheme())+1)%3];try{localStorage.setItem(THEME_KEY,n)}catch(e){}applyTheme(n);toast('Theme: '+n[0].toUpperCase()+n.slice(1))});
+  $('#soloOnly').addEventListener('change',e=>{S.solo=e.target.checked;onFilter()});
+  $('#offerOnly').addEventListener('change',e=>{S.offer=e.target.checked;onFilter()});
+  [['lyFuel','fuel'],['lyEv','ev']].forEach(([id,k])=>$('#'+id).addEventListener('change',e=>{
+    S.ly[k]=e.target.checked;
+    if(S.fsel&&!FAC.some(f=>f.id===S.fsel&&S.ly[f.type]))S.fsel=null;
+    renderLegend();renderPanels();
+    const on=facOn();if(e.target.checked&&on.length)fitMap(filtered().concat(on));
+  }));
+  document.addEventListener('submit',submitReview);
+  document.addEventListener('input',e=>{if(e.target.matches('.revform textarea'))e.target.closest('.revform').querySelector('.cnt').textContent=e.target.value.length+'/200'});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&(S.sel||S.fsel)&&!$('#peek').hidden){S.sel=null;S.fsel=null;renderPanels()}
+  });
+})();
+})();
+</script>
+
+</body></html>
